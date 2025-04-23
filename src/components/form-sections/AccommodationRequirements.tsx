@@ -237,7 +237,7 @@ const AccommodationRequirements = () => {
                     </TooltipProvider>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Locations >100km from major urban centers
+                    Locations {'>'}100km from major urban centers
                   </p>
                 </div>
               </div>
