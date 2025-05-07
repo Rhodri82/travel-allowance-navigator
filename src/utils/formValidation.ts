@@ -1,3 +1,4 @@
+
 import { FormState } from "../context/FormContext";
 
 // Function to validate the entire form state or a specific section
@@ -179,16 +180,18 @@ const validateTransportSection = (
 
   // Validate flights if selected
   if (formState.selectedTransportOptions.includes("flights")) {
-    if (!formState.flights.from) {
+    // Check first flight (default flight)
+    const defaultFlight = formState.flights[0];
+    if (!defaultFlight.from) {
       errors["flights-from"] = "Departure location is required";
     }
-    if (!formState.flights.to) {
+    if (!defaultFlight.to) {
       errors["flights-to"] = "Arrival location is required";
     }
-    if (!formState.flights.departureDate) {
+    if (!defaultFlight.departureDate) {
       errors["flights-departure-date"] = "Flight departure date is required";
     }
-    if (!formState.flights.returnDate) {
+    if (!defaultFlight.returnDate) {
       errors["flights-return-date"] = "Flight return date is required";
     }
   }

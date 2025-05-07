@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useForm } from "@/context/FormContext";
 import {
@@ -24,7 +23,7 @@ import {
   CalendarIcon, 
   Trash2, 
   Plus, 
-  Airplane,
+  Airplay,
   Car, 
   Ship, 
   Briefcase,
@@ -90,7 +89,7 @@ const FlightSection = () => {
         />
         <div className="grid gap-1.5">
           <Label htmlFor="show-flights" className="font-medium flex items-center">
-            <Airplane className="h-4 w-4 mr-2" />
+            <Airplay className="h-4 w-4 mr-2" />
             Domestic Flights Required
           </Label>
         </div>
@@ -817,11 +816,11 @@ const TransportOptions = () => {
               <Checkbox 
                 id="flights" 
                 checked={isTransportOptionSelected("flights")}
-                onCheckedChange={handleFlightsOptionChange}
+                onCheckedChange={(checked) => handleFlightsOptionChange(!!checked)}
               />
               <div className="grid gap-1.5">
                 <Label htmlFor="flights" className="font-medium flex items-center">
-                  <Airplane className="h-4 w-4 mr-2" />
+                  <Airplay className="h-4 w-4 mr-2" />
                   Domestic Flights
                 </Label>
               </div>
@@ -831,7 +830,7 @@ const TransportOptions = () => {
               <Checkbox 
                 id="car-hire" 
                 checked={isTransportOptionSelected("car_hire")}
-                onCheckedChange={(checked) => handleTransportOptionChange("car_hire", checked || false)}
+                onCheckedChange={(checked) => handleTransportOptionChange("car_hire", !!checked)}
               />
               <div className="grid gap-1.5">
                 <Label htmlFor="car-hire" className="font-medium flex items-center">
@@ -845,7 +844,7 @@ const TransportOptions = () => {
               <Checkbox 
                 id="ferry" 
                 checked={isTransportOptionSelected("ferry")}
-                onCheckedChange={(checked) => handleTransportOptionChange("ferry", checked || false)}
+                onCheckedChange={(checked) => handleTransportOptionChange("ferry", !!checked)}
               />
               <div className="grid gap-1.5">
                 <Label htmlFor="ferry" className="font-medium flex items-center">
@@ -859,7 +858,7 @@ const TransportOptions = () => {
               <Checkbox 
                 id="private-vehicle" 
                 checked={isTransportOptionSelected("private_vehicle")}
-                onCheckedChange={handlePrivateVehicleOptionChange}
+                onCheckedChange={(checked) => handlePrivateVehicleOptionChange(!!checked)}
               />
               <div className="grid gap-1.5">
                 <Label htmlFor="private-vehicle" className="font-medium flex items-center">
@@ -877,7 +876,7 @@ const TransportOptions = () => {
         <Card className="shadow-none border">
           <CardHeader className="pb-3 bg-muted/50">
             <CardTitle className="text-base flex items-center">
-              <Airplane className="h-4 w-4 mr-2" />
+              <Airplay className="h-4 w-4 mr-2" />
               Flights
             </CardTitle>
           </CardHeader>

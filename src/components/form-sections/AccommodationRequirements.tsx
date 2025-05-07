@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useForm } from "@/context/FormContext";
 import {
@@ -86,7 +85,9 @@ const AccommodationRequirements = () => {
       state.travelType,
       field === "isRemote" ? checked : state.isRemote,
       field === "isSubstandard" ? checked : state.isSubstandard,
-      field === "isShortNotice" ? checked : state.isShortNotice
+      field === "isShortNotice" ? checked : state.isShortNotice,
+      state.accommodationType,
+      state.accommodationApproved
     );
 
     dispatch({
@@ -110,7 +111,9 @@ const AccommodationRequirements = () => {
     state.travelType,
     state.isRemote,
     state.isSubstandard,
-    state.isShortNotice
+    state.isShortNotice,
+    state.accommodationType,
+    state.accommodationApproved
   );
 
   // Determine if field has error
@@ -237,7 +240,7 @@ const AccommodationRequirements = () => {
                     </TooltipProvider>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Locations {'>'}100km from major urban centers
+                    Locations &gt;100km from major urban centers
                   </p>
                 </div>
               </div>
