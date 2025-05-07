@@ -32,7 +32,7 @@ const FormContent = () => {
     
     // Recalculate allowances before proceeding to next step
     // This ensures calculations are up-to-date when viewing the AllowanceCalculation section
-    if (state.currentStep >= 2 && state.currentStep <= 6) {
+    if (state.currentStep >= 2 && state.currentStep <= 5) {
       const updatedState = recalculateAllowances(state);
       
       // Update calculated fields in the form state
@@ -62,6 +62,14 @@ const FormContent = () => {
       return;
     }
     
+    // Final recalculation before submission
+    const finalState = recalculateAllowances(state);
+    Object.entries(finalState).forEach(([key, value]) => {
+      if (key !== "errors" && key !== "currentStep") {
+        dispatch({ type: "UPDATE_FIELD", field: key, value });
+      }
+    });
+    
     // Submit form
     dispatch({ type: "SUBMIT_FORM" });
     
@@ -80,20 +88,17 @@ const FormContent = () => {
       case 2:
         return <TripSummary />;
       case 3:
-        // Travel Duration section is now handled automatically via calculations
-        return <AllowanceCalculation preview={true} />;
-      case 4:
         return <AccommodationRequirements />;
-      case 5:
+      case 4:
         return <TransportOptions />;
-      case 6:
+      case 5:
         return <MealsSection />;
-      case 7:
-        return <AllowanceCalculation />;
-      case 8:
+      case 6:
         return <PaymentOptions />;
-      case 9:
+      case 7:
         return <ApprovalSubmission />;
+      case 8:
+        return <AllowanceCalculation />; // Moved to be accessible only from the final summary
       default:
         return <div>Invalid step</div>;
     }
@@ -120,7 +125,7 @@ const FormContent = () => {
             
             <FormNavigation 
               currentStep={state.currentStep} 
-              totalSteps={9}
+              totalSteps={7}
               onNext={handleNextStep}
               onPrev={handlePrevStep}
               onSubmit={handleSubmit}

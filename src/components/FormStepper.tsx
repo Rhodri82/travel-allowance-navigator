@@ -15,13 +15,11 @@ const FormStepper: React.FC<FormStepperProps> = ({ currentStep }) => {
   const steps = [
     { id: 1, label: "Traveler Setup" },
     { id: 2, label: "Trip Summary" },
-    { id: 3, label: "Travel Duration" },
-    { id: 4, label: "Accommodation" },
-    { id: 5, label: "Transport" },
-    { id: 6, label: "Meals" },
-    { id: 7, label: "Allowance Calculation" },
-    { id: 8, label: "Payment Options" },
-    { id: 9, label: "Approval & Submission" },
+    { id: 3, label: "Accommodation" },
+    { id: 4, label: "Transport" },
+    { id: 5, label: "Meals" },
+    { id: 6, label: "Payment Options" },
+    { id: 7, label: "Summary & Approval" },
   ];
   
   // Navigate to specific step when clicking on the step indicator
