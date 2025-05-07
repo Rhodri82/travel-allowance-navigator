@@ -116,19 +116,19 @@ export const isBreakfastEligible = (departureTime: string): boolean => {
 /**
  * Calculates accommodation rate based on travel type, accommodation type, and conditions
  * @param travelType Travel type classification
- * @param accommodationType Type of accommodation
  * @param isRemote Is remote location
  * @param isSubstandard Is substandard accommodation
  * @param isShortNotice Is short notice booking
+ * @param accommodationType Type of accommodation
  * @param isApproved Is accommodation approved (for self-booked)
  * @returns The calculated accommodation rate
  */
 export const calculateAccommodationRate = (
   travelType: TravelType,
-  accommodationType: string,
   isRemote: boolean,
   isSubstandard: boolean,
   isShortNotice: boolean,
+  accommodationType: string,
   isApproved: boolean
 ): number => {
   // Aboriginal Land has a fixed rate regardless of other factors
