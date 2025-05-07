@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, ReactNode } from "react";
 
 // Define traveler types
@@ -8,13 +7,16 @@ export type TravelerType = "myself" | "someone_else" | "group";
 export type MealType = "breakfast" | "lunch" | "dinner";
 
 // Define travel types based on duration
-export type TravelType = "short_stay" | "long_stay" | "reportable_lafha";
+export type TravelType = "short_stay" | "long_stay" | "reportable_lafha" | "aboriginal_land";
 
 // Define accommodation types
 export type AccommodationType = "ctm" | "private" | "self_booked";
 
 // Define transport options
 export type TransportOption = "flights" | "car_hire" | "ferry" | "private_vehicle";
+
+// Define time windows for transport
+export type TimeWindow = "morning" | "afternoon" | "evening";
 
 // Define SAP codes
 export type SAPCode = 
@@ -36,6 +38,21 @@ export interface Traveler {
   role: string;
 }
 
+// Define flight information
+export interface Flight {
+  id: string;
+  from: string;
+  to: string;
+  departureDate: string;
+  departureWindow: TimeWindow;
+  returnDate: string;
+  returnWindow: TimeWindow;
+  frequentFlyerNumber: string;
+  seatPreferences: string;
+  mealOptions: string;
+  notes: string;
+}
+
 // Define the entire form state
 export interface FormState {
   // Section 1: Traveler Setup
@@ -47,6 +64,7 @@ export interface FormState {
   tripPurpose: "work" | "training" | "conference" | "other" | "";
   tripPurposeOther?: string;
   workLocation: string;
+  isAboriginalLand: boolean;
   workOrder: string;
   costCentre: string;
   departureDate: string;
@@ -68,6 +86,7 @@ export interface FormState {
   isRemote: boolean;
   isSubstandard: boolean;
   isShortNotice: boolean;
+  shortNoticeFirstNightOnly: boolean; // Default to true for the short notice first night only logic
   accommodationNights: number;
   accommodationRate: number;
 
@@ -75,18 +94,8 @@ export interface FormState {
   selectedTransportOptions: TransportOption[];
   
   // Flights
-  flights: {
-    from: string;
-    to: string;
-    departureDate: string;
-    departureTime: string;
-    returnDate: string;
-    returnTime: string;
-    frequentFlyerNumber: string;
-    seatPreferences: string;
-    mealOptions: string;
-    notes: string;
-  };
+  showFlights: boolean;
+  flights: Flight[];
   
   // Car Hire
   carHire: {
@@ -104,7 +113,9 @@ export interface FormState {
     from: string;
     to: string;
     departureDate: string;
-    departureTime: string;
+    departureWindow: TimeWindow;
+    returnDate: string;
+    returnWindow: TimeWindow;
     vehicleOnBoard: boolean;
   };
   
@@ -166,6 +177,7 @@ const initialState: FormState = {
   // Section 2: Trip Summary
   tripPurpose: "",
   workLocation: "",
+  isAboriginalLand: false,
   workOrder: "",
   costCentre: "",
   departureDate: "",
@@ -187,6 +199,7 @@ const initialState: FormState = {
   isRemote: false,
   isSubstandard: false,
   isShortNotice: false,
+  shortNoticeFirstNightOnly: true, // Default to true for the short notice first night only logic
   accommodationNights: 0,
   accommodationRate: 0,
 
@@ -194,18 +207,20 @@ const initialState: FormState = {
   selectedTransportOptions: [],
   
   // Flights
-  flights: {
+  showFlights: false,
+  flights: [{
+    id: "default",
     from: "",
     to: "",
     departureDate: "",
-    departureTime: "",
+    departureWindow: "morning",
     returnDate: "",
-    returnTime: "",
+    returnWindow: "afternoon",
     frequentFlyerNumber: "",
     seatPreferences: "",
     mealOptions: "",
     notes: "",
-  },
+  }],
   
   // Car Hire
   carHire: {
@@ -223,7 +238,9 @@ const initialState: FormState = {
     from: "",
     to: "",
     departureDate: "",
-    departureTime: "",
+    departureWindow: "morning",
+    returnDate: "",
+    returnWindow: "afternoon",
     vehicleOnBoard: false,
   },
   
@@ -285,6 +302,9 @@ type ActionType =
   | { type: "REMOVE_PERSONAL_TRAVEL_DATE"; date: string }
   | { type: "CALCULATE_TRAVEL_DURATION" }
   | { type: "CALCULATE_ALLOWANCES" }
+  | { type: "ADD_FLIGHT" }
+  | { type: "REMOVE_FLIGHT"; id: string }
+  | { type: "UPDATE_FLIGHT"; id: string; field: string; value: any }
   | { type: "SET_ERRORS"; errors: Record<string, string> }
   | { type: "CLEAR_ERROR"; field: string }
   | { type: "NEXT_STEP" }
@@ -345,10 +365,14 @@ const formReducer = (state: FormState, action: ActionType): FormState => {
       const businessNights = totalNights - state.personalTravelDates.length;
       
       // Determine travel type based on business rules
-      // If ≥ 21 consecutive nights OR ≥ 90 cumulative days → LAFHA
-      // If ≥ 365 days → Reportable LAFHA
       let travelType: TravelType = "short_stay";
-      if (businessNights >= 365) {
+      
+      // Aboriginal land takes precedence over all other classifications
+      if (state.isAboriginalLand) {
+        travelType = "aboriginal_land";
+      }
+      // Otherwise, use the standard duration-based rules
+      else if (businessNights >= 365) {
         travelType = "reportable_lafha";
       } else if (businessNights >= 21 || state.cumulativeDays + businessNights >= 90) {
         travelType = "long_stay";
@@ -361,32 +385,135 @@ const formReducer = (state: FormState, action: ActionType): FormState => {
       };
     }
     
+    case "ADD_FLIGHT": {
+      const newFlight: Flight = {
+        id: `flight-${Date.now()}`,
+        from: "",
+        to: "",
+        departureDate: state.departureDate || "",
+        departureWindow: "morning",
+        returnDate: state.returnDate || "",
+        returnWindow: "afternoon",
+        frequentFlyerNumber: "",
+        seatPreferences: "",
+        mealOptions: "",
+        notes: "",
+      };
+      
+      return {
+        ...state,
+        flights: [...state.flights, newFlight]
+      };
+    }
+    
+    case "REMOVE_FLIGHT": {
+      // Never remove the last flight
+      if (state.flights.length <= 1) {
+        return state;
+      }
+      
+      return {
+        ...state,
+        flights: state.flights.filter(flight => flight.id !== action.id)
+      };
+    }
+    
+    case "UPDATE_FLIGHT": {
+      return {
+        ...state,
+        flights: state.flights.map(flight => 
+          flight.id === action.id 
+            ? { ...flight, [action.field]: action.value } 
+            : flight
+        )
+      };
+    }
+    
     case "CALCULATE_ALLOWANCES": {
       // Calculate accommodation allowance
       let accommodationRate = 0;
+      let accommodationTotal = 0;
+      
       if (state.accommodationRequired) {
-        // Standard rates (simplified for example)
-        if (state.travelType === "short_stay") {
-          accommodationRate = 148.70;
-        } else {
-          accommodationRate = 268.34;
+        // Use different rates based on accommodation type
+        if (state.accommodationType === "ctm") {
+          // Standard CTM rates
+          if (state.travelType === "short_stay") {
+            accommodationRate = 148.70;
+          } else if (state.travelType === "long_stay") {
+            accommodationRate = 268.34;
+          } else if (state.travelType === "reportable_lafha") {
+            accommodationRate = 289.70;
+          }
+        } else if (state.accommodationType === "private") {
+          // Private accommodation (friends/family) rates
+          accommodationRate = 95.00; // Lower rate for private accommodation
+        } else if (state.accommodationType === "self_booked") {
+          // Self-booked rates
+          if (state.accommodationApproved) {
+            if (state.travelType === "short_stay") {
+              accommodationRate = 159.50;
+            } else {
+              accommodationRate = 285.00;
+            }
+          } else {
+            if (state.travelType === "short_stay") {
+              accommodationRate = 148.70;
+            } else if (state.travelType === "long_stay") {
+              accommodationRate = 268.34;
+            } else if (state.travelType === "reportable_lafha") {
+              accommodationRate = 289.70;
+            }
+          }
         }
         
-        // Apply uplifts
-        if (state.isRemote) accommodationRate *= 1.2;
-        if (state.isSubstandard) accommodationRate *= 1.15;
-        if (state.isShortNotice) accommodationRate *= 1.1;
+        // Apply uplifts (these are stackable)
+        let baseRate = accommodationRate;
+        
+        if (state.isRemote) {
+          accommodationRate *= 1.2; // 20% uplift for remote locations
+        }
+        
+        if (state.isSubstandard) {
+          accommodationRate *= 1.15; // 15% uplift for substandard accommodation
+        }
+        
+        // Short notice is only applied for the first night
+        if (state.isShortNotice && state.shortNoticeFirstNightOnly) {
+          // Calculate regular nights at normal rate
+          const regularNightsRate = (state.accommodationNights - 1) * accommodationRate;
+          // Calculate first night with uplift
+          const firstNightRate = baseRate * 1.1;
+          // Total is combined
+          accommodationTotal = regularNightsRate + firstNightRate;
+        } else if (state.isShortNotice && !state.shortNoticeFirstNightOnly) {
+          // Apply 10% uplift to all nights
+          accommodationRate *= 1.1;
+          accommodationTotal = state.accommodationNights * accommodationRate;
+        } else {
+          // Regular calculation for all nights
+          accommodationTotal = state.accommodationNights * accommodationRate;
+        }
       }
       
-      const accommodationTotal = state.accommodationNights * accommodationRate;
+      // Aboriginal Land Allowance overrides other calculations
+      if (state.isAboriginalLand) {
+        const aboriginalLandDailyRate = 280.00; // $280/day fixed rate
+        const businessDays = state.consecutiveNights + 1;
+        accommodationTotal = aboriginalLandDailyRate * businessDays;
+        accommodationRate = aboriginalLandDailyRate;
+      }
       
       // Calculate meals allowance
       let mealsTotal = 0;
-      if (state.eligibleForMeals) {
+      if (state.eligibleForMeals && !state.isAboriginalLand) {
         // Base rate of $75/day for meals (simplified)
         const mealRate = 75;
         const mealsDeducted = state.providedMeals.length * (mealRate / 3);
         mealsTotal = (state.consecutiveNights + 1) * mealRate - mealsDeducted;
+      } else if (state.eligibleForMeals && state.isAboriginalLand) {
+        // Meals are included in the Aboriginal Land allowance
+        mealsTotal = 0;
       }
       
       // Calculate vehicle allowance
@@ -400,27 +527,32 @@ const formReducer = (state: FormState, action: ActionType): FormState => {
       // Determine SAP codes
       const sapCodes: SAPCode[] = [];
       
-      // Standard codes based on travel type
-      if (state.travelType === "short_stay") {
-        sapCodes.push("OR03");
-      } else if (state.travelType === "long_stay") {
-        sapCodes.push("OR23");
+      // Aboriginal land codes take precedence
+      if (state.isAboriginalLand) {
+        sapCodes.push("OR12", "OR13");
       } else {
-        sapCodes.push("OR24");
-      }
-      
-      // Add meal codes if applicable
-      if (mealsTotal > 0) {
-        sapCodes.push("0A53");
+        // Standard codes based on travel type
+        if (state.travelType === "short_stay") {
+          sapCodes.push("OR03");
+        } else if (state.travelType === "long_stay") {
+          sapCodes.push("OR23");
+        } else if (state.travelType === "reportable_lafha") {
+          sapCodes.push("OR24");
+        }
         
-        if (state.breakfastEligible) {
-          sapCodes.push("0A50");
+        // Add meal codes if applicable
+        if (mealsTotal > 0) {
+          sapCodes.push("0A53");
+          
+          if (state.breakfastEligible) {
+            sapCodes.push("0A50");
+          }
         }
       }
       
-      // Special case for Aboriginal Lands
-      if (state.isRemote && /aboriginal|indigenous/i.test(state.workLocation)) {
-        sapCodes.push("OR12", "OR13");
+      // Vehicle allowance code
+      if (vehicleTotal > 0) {
+        sapCodes.push("0R04");
       }
       
       // Receipt requirement logic
@@ -429,10 +561,11 @@ const formReducer = (state: FormState, action: ActionType): FormState => {
         (accommodationTotal + mealsTotal + vehicleTotal + upliftsTotal) > 300;
       
       // FBT applicability
-      const fbtApplicable = state.travelType !== "short_stay";
+      const fbtApplicable = state.travelType !== "short_stay" && !state.isAboriginalLand;
       
       return {
         ...state,
+        accommodationRate, // Store the base rate (without short notice adjustments)
         calculatedAllowances: {
           travelType: state.travelType,
           sapCodes,

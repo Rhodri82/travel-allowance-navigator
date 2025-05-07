@@ -2,946 +2,935 @@
 import React from "react";
 import { useForm } from "@/context/FormContext";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Checkbox } from "@/components/ui/checkbox";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
 } from "@/components/ui/select";
+import { format } from "date-fns";
+import { 
+  CalendarIcon, 
+  Trash2, 
+  Plus, 
+  Airplane,
+  Car, 
+  Ship, 
+  Briefcase,
+  Clock
+} from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { format } from "date-fns";
-import { CalendarIcon, Info } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { TransportOption } from "@/context/FormContext";
+import { TimeWindow } from "@/context/FormContext";
 
-const TransportOptions = () => {
+const timeWindowOptions = [
+  { value: "morning", label: "Morning (5am - 12pm)" },
+  { value: "afternoon", label: "Afternoon (12pm - 5pm)" },
+  { value: "evening", label: "Evening (5pm - 12am)" }
+];
+
+const FlightSection = () => {
   const { state, dispatch } = useForm();
 
-  // Handle transport option selection
-  const handleTransportOptionChange = (
-    checked: boolean,
-    option: TransportOption
-  ) => {
-    if (checked) {
-      dispatch({
-        type: "UPDATE_FIELD",
-        field: "selectedTransportOptions",
-        value: [...state.selectedTransportOptions, option],
-      });
-    } else {
-      dispatch({
-        type: "UPDATE_FIELD",
-        field: "selectedTransportOptions",
-        value: state.selectedTransportOptions.filter((item) => item !== option),
-      });
-    }
-  };
-
-  // Handle input change for flight details
-  const handleFlightInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-    field: string
-  ) => {
+  const handleFlightChange = (id: string, field: string, value: any) => {
     dispatch({
-      type: "UPDATE_FIELD",
-      field: "flights",
-      value: {
-        ...state.flights,
-        [field]: e.target.value,
-      },
+      type: "UPDATE_FLIGHT",
+      id,
+      field,
+      value
     });
   };
 
-  // Handle date change for flights
-  const handleFlightDateChange = (date: Date | undefined, field: string) => {
-    if (date) {
-      dispatch({
-        type: "UPDATE_FIELD",
-        field: "flights",
-        value: {
-          ...state.flights,
-          [field]: format(date, "yyyy-MM-dd"),
-        },
-      });
-    }
+  const handleAddFlight = () => {
+    dispatch({ type: "ADD_FLIGHT" });
   };
 
-  // Handle input change for car hire
-  const handleCarHireInputChange = (
+  const handleRemoveFlight = (id: string) => {
+    dispatch({ type: "REMOVE_FLIGHT", id });
+  };
+  
+  const handleToggleFlights = (checked: boolean) => {
+    dispatch({
+      type: "UPDATE_FIELD",
+      field: "showFlights",
+      value: checked
+    });
+  };
+  
+  // Format time window for display
+  const formatTimeWindow = (window: TimeWindow): string => {
+    const option = timeWindowOptions.find(opt => opt.value === window);
+    return option ? option.label : window;
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center space-x-2">
+        <Checkbox 
+          id="show-flights" 
+          checked={state.showFlights} 
+          onCheckedChange={handleToggleFlights}
+        />
+        <div className="grid gap-1.5">
+          <Label htmlFor="show-flights" className="font-medium flex items-center">
+            <Airplane className="h-4 w-4 mr-2" />
+            Domestic Flights Required
+          </Label>
+        </div>
+      </div>
+      
+      {state.showFlights && (
+        <div className="space-y-6 pl-6 border-l-2 border-muted mt-2">
+          {state.flights.map((flight, index) => (
+            <div key={flight.id} className="space-y-4">
+              {index > 0 && (
+                <div className="flex justify-between items-center">
+                  <h4 className="text-sm font-medium">Additional Flight {index}</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleRemoveFlight(flight.id)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Remove
+                  </Button>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`flight-from-${flight.id}`}>From</Label>
+                  <Input
+                    id={`flight-from-${flight.id}`}
+                    value={flight.from}
+                    onChange={(e) => handleFlightChange(flight.id, "from", e.target.value)}
+                    placeholder="Departure airport/city"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`flight-to-${flight.id}`}>To</Label>
+                  <Input
+                    id={`flight-to-${flight.id}`}
+                    value={flight.to}
+                    onChange={(e) => handleFlightChange(flight.id, "to", e.target.value)}
+                    placeholder="Arrival airport/city"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`flight-departure-date-${flight.id}`}>Departure Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id={`flight-departure-date-${flight.id}`}
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {flight.departureDate ? format(new Date(flight.departureDate), "PPP") : "Select date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={flight.departureDate ? new Date(flight.departureDate) : undefined}
+                        onSelect={(date) => handleFlightChange(flight.id, "departureDate", date ? format(date, "yyyy-MM-dd") : "")}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`flight-departure-time-${flight.id}`}>Departure Time</Label>
+                  <Select 
+                    value={flight.departureWindow} 
+                    onValueChange={(value) => handleFlightChange(flight.id, "departureWindow", value)}
+                  >
+                    <SelectTrigger id={`flight-departure-time-${flight.id}`}>
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-2" />
+                        <span>
+                          {formatTimeWindow(flight.departureWindow as TimeWindow)}
+                        </span>
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeWindowOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`flight-return-date-${flight.id}`}>Return Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        id={`flight-return-date-${flight.id}`}
+                        variant="outline"
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {flight.returnDate ? format(new Date(flight.returnDate), "PPP") : "Select date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={flight.returnDate ? new Date(flight.returnDate) : undefined}
+                        onSelect={(date) => handleFlightChange(flight.id, "returnDate", date ? format(date, "yyyy-MM-dd") : "")}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`flight-return-time-${flight.id}`}>Return Time</Label>
+                  <Select 
+                    value={flight.returnWindow} 
+                    onValueChange={(value) => handleFlightChange(flight.id, "returnWindow", value)}
+                  >
+                    <SelectTrigger id={`flight-return-time-${flight.id}`}>
+                      <div className="flex items-center">
+                        <Clock className="h-4 w-4 mr-2" />
+                        <span>
+                          {formatTimeWindow(flight.returnWindow as TimeWindow)}
+                        </span>
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {timeWindowOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor={`flight-frequent-flyer-${flight.id}`}>Frequent Flyer Number (optional)</Label>
+                  <Input
+                    id={`flight-frequent-flyer-${flight.id}`}
+                    value={flight.frequentFlyerNumber}
+                    onChange={(e) => handleFlightChange(flight.id, "frequentFlyerNumber", e.target.value)}
+                    placeholder="e.g. QF12345678"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor={`flight-seat-preferences-${flight.id}`}>Seat Preferences (optional)</Label>
+                  <Input
+                    id={`flight-seat-preferences-${flight.id}`}
+                    value={flight.seatPreferences}
+                    onChange={(e) => handleFlightChange(flight.id, "seatPreferences", e.target.value)}
+                    placeholder="e.g. Window, Aisle"
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor={`flight-meal-${flight.id}`}>Meal Requirements (optional)</Label>
+                <Input
+                  id={`flight-meal-${flight.id}`}
+                  value={flight.mealOptions}
+                  onChange={(e) => handleFlightChange(flight.id, "mealOptions", e.target.value)}
+                  placeholder="e.g. Vegetarian, Gluten-free"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor={`flight-notes-${flight.id}`}>Additional Notes (optional)</Label>
+                <Textarea
+                  id={`flight-notes-${flight.id}`}
+                  value={flight.notes}
+                  onChange={(e) => handleFlightChange(flight.id, "notes", e.target.value)}
+                  placeholder="Any additional requirements or information"
+                  rows={2}
+                />
+              </div>
+              
+              {index > 0 && <hr className="my-2" />}
+            </div>
+          ))}
+          
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={handleAddFlight} 
+            className="w-full"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Additional Flight
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CarHireSection = () => {
+  const { state, dispatch } = useForm();
+
+  const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     field: string
   ) => {
     dispatch({
       type: "UPDATE_FIELD",
-      field: "carHire",
-      value: {
-        ...state.carHire,
-        [field]: e.target.value,
-      },
+      field: `carHire.${field}`,
+      value: e.target.value,
     });
   };
 
-  // Handle date change for car hire
-  const handleCarHireDateChange = (date: Date | undefined, field: string) => {
+  const handleDateChange = (field: string, date: Date | undefined) => {
     if (date) {
       dispatch({
         type: "UPDATE_FIELD",
-        field: "carHire",
-        value: {
-          ...state.carHire,
-          [field]: format(date, "yyyy-MM-dd"),
-        },
+        field: `carHire.${field}`,
+        value: format(date, "yyyy-MM-dd"),
       });
     }
   };
 
-  // Handle input change for ferry
-  const handleFerryInputChange = (
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="car-pickup-location">Pickup Location</Label>
+          <Input
+            id="car-pickup-location"
+            value={state.carHire.pickupLocation}
+            onChange={(e) => handleInputChange(e, "pickupLocation")}
+            placeholder="Enter pickup location"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="car-dropoff-location">Drop-off Location</Label>
+          <Input
+            id="car-dropoff-location"
+            value={state.carHire.dropoffLocation}
+            onChange={(e) => handleInputChange(e, "dropoffLocation")}
+            placeholder="Enter drop-off location"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="car-pickup-date">Pickup Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="car-pickup-date"
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {state.carHire.pickupDate
+                  ? format(new Date(state.carHire.pickupDate), "PPP")
+                  : "Select date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={
+                  state.carHire.pickupDate
+                    ? new Date(state.carHire.pickupDate)
+                    : undefined
+                }
+                onSelect={(date) => handleDateChange("pickupDate", date)}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="car-pickup-time">Pickup Time</Label>
+          <Input
+            id="car-pickup-time"
+            type="time"
+            value={state.carHire.pickupTime}
+            onChange={(e) => handleInputChange(e, "pickupTime")}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="car-dropoff-date">Drop-off Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="car-dropoff-date"
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {state.carHire.dropoffDate
+                  ? format(new Date(state.carHire.dropoffDate), "PPP")
+                  : "Select date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={
+                  state.carHire.dropoffDate
+                    ? new Date(state.carHire.dropoffDate)
+                    : undefined
+                }
+                onSelect={(date) => handleDateChange("dropoffDate", date)}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="car-dropoff-time">Drop-off Time</Label>
+          <Input
+            id="car-dropoff-time"
+            type="time"
+            value={state.carHire.dropoffTime}
+            onChange={(e) => handleInputChange(e, "dropoffTime")}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="vehicle-type">Vehicle Type</Label>
+        <Input
+          id="vehicle-type"
+          value={state.carHire.vehicleType}
+          onChange={(e) => handleInputChange(e, "vehicleType")}
+          placeholder="e.g. Economy, SUV, etc."
+        />
+      </div>
+    </div>
+  );
+};
+
+const FerrySection = () => {
+  const { state, dispatch } = useForm();
+
+  const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     field: string
   ) => {
     dispatch({
       type: "UPDATE_FIELD",
-      field: "ferry",
-      value: {
-        ...state.ferry,
-        [field]: e.target.value,
-      },
+      field: `ferry.${field}`,
+      value: e.target.value,
     });
   };
 
-  // Handle date change for ferry
-  const handleFerryDateChange = (date: Date | undefined) => {
+  const handleDateChange = (field: string, date: Date | undefined) => {
     if (date) {
       dispatch({
         type: "UPDATE_FIELD",
-        field: "ferry",
-        value: {
-          ...state.ferry,
-          departureDate: format(date, "yyyy-MM-dd"),
-        },
+        field: `ferry.${field}`,
+        value: format(date, "yyyy-MM-dd"),
       });
     }
   };
-
-  // Handle toggle for vehicle on board ferry
+  
+  const handleTimeWindowChange = (field: string, value: string) => {
+    dispatch({
+      type: "UPDATE_FIELD",
+      field: `ferry.${field}`,
+      value
+    });
+  };
+  
   const handleVehicleOnBoardChange = (checked: boolean) => {
     dispatch({
       type: "UPDATE_FIELD",
-      field: "ferry",
-      value: {
-        ...state.ferry,
-        vehicleOnBoard: checked,
-      },
+      field: "ferry.vehicleOnBoard",
+      value: checked
     });
   };
 
-  // Handle input change for private vehicle
-  const handlePrivateVehicleInputChange = (
+  // Format time window for display
+  const formatTimeWindow = (window: TimeWindow): string => {
+    const option = timeWindowOptions.find(opt => opt.value === window);
+    return option ? option.label : window;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="ferry-from">From</Label>
+          <Input
+            id="ferry-from"
+            value={state.ferry.from}
+            onChange={(e) => handleInputChange(e, "from")}
+            placeholder="Departure port/harbor"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ferry-to">To</Label>
+          <Input
+            id="ferry-to"
+            value={state.ferry.to}
+            onChange={(e) => handleInputChange(e, "to")}
+            placeholder="Arrival port/harbor"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="ferry-departure-date">Departure Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="ferry-departure-date"
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {state.ferry.departureDate
+                  ? format(new Date(state.ferry.departureDate), "PPP")
+                  : "Select date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={
+                  state.ferry.departureDate
+                    ? new Date(state.ferry.departureDate)
+                    : undefined
+                }
+                onSelect={(date) => handleDateChange("departureDate", date)}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ferry-departure-time">Departure Time</Label>
+          <Select 
+            value={state.ferry.departureWindow} 
+            onValueChange={(value) => handleTimeWindowChange("departureWindow", value)}
+          >
+            <SelectTrigger id="ferry-departure-time">
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-2" />
+                <span>
+                  {formatTimeWindow(state.ferry.departureWindow as TimeWindow)}
+                </span>
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {timeWindowOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="ferry-return-date">Return Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                id="ferry-return-date"
+                variant="outline"
+                className="w-full justify-start text-left font-normal"
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {state.ferry.returnDate
+                  ? format(new Date(state.ferry.returnDate), "PPP")
+                  : "Select date"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+              <Calendar
+                mode="single"
+                selected={
+                  state.ferry.returnDate
+                    ? new Date(state.ferry.returnDate)
+                    : undefined
+                }
+                onSelect={(date) => handleDateChange("returnDate", date)}
+                initialFocus
+                className="pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ferry-return-time">Return Time</Label>
+          <Select 
+            value={state.ferry.returnWindow} 
+            onValueChange={(value) => handleTimeWindowChange("returnWindow", value)}
+          >
+            <SelectTrigger id="ferry-return-time">
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-2" />
+                <span>
+                  {formatTimeWindow(state.ferry.returnWindow as TimeWindow)}
+                </span>
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {timeWindowOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Checkbox 
+          id="vehicle-onboard" 
+          checked={state.ferry.vehicleOnBoard}
+          onCheckedChange={handleVehicleOnBoardChange}
+        />
+        <Label htmlFor="vehicle-onboard">Vehicle on board</Label>
+      </div>
+    </div>
+  );
+};
+
+const PrivateVehicleSection = () => {
+  const { state, dispatch } = useForm();
+
+  const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
     field: string
   ) => {
-    const value =
-      field === "estimatedKm" ? Number(e.target.value) : e.target.value;
-
-    dispatch({
-      type: "UPDATE_FIELD",
-      field: "privateVehicle",
-      value: {
-        ...state.privateVehicle,
-        [field]: value,
-      },
-    });
-
-    // Auto-calculate allowance if km changes
+    let value = e.target.value;
+    
+    // Convert to number if field is estimatedKm
     if (field === "estimatedKm") {
-      const kmValue = Number(e.target.value);
-      const calculatedAllowance = kmValue * 0.96; // $0.96 per km
-
+      value = value === "" ? "0" : value;
+      const numValue = parseFloat(value);
+      
+      // Calculate allowance based on km
+      const calculatedAllowance = numValue * 0.96;
+      
       dispatch({
         type: "UPDATE_FIELD",
-        field: "privateVehicle",
-        value: {
-          ...state.privateVehicle,
-          estimatedKm: kmValue,
-          calculatedAllowance,
-        },
+        field: "privateVehicle.calculatedAllowance",
+        value: calculatedAllowance,
       });
     }
-  };
-
-  // Handle approved location checkbox
-  const handleApprovedLocationChange = (checked: boolean) => {
+    
     dispatch({
       type: "UPDATE_FIELD",
-      field: "privateVehicle",
-      value: {
-        ...state.privateVehicle,
-        departingFromApprovedLocation: checked,
-      },
+      field: `privateVehicle.${field}`,
+      value,
+    });
+  };
+  
+  const handleDepartingFromApprovedChange = (checked: boolean) => {
+    dispatch({
+      type: "UPDATE_FIELD",
+      field: "privateVehicle.departingFromApprovedLocation",
+      value: checked,
     });
   };
 
-  // Determine if field has error
-  const hasError = (field: string) => {
-    return Boolean(state.errors[field]);
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="start-location">Start Location</Label>
+          <Input
+            id="start-location"
+            value={state.privateVehicle.startLocation}
+            onChange={(e) => handleInputChange(e, "startLocation")}
+            placeholder="Starting point"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="end-location">End Location</Label>
+          <Input
+            id="end-location"
+            value={state.privateVehicle.endLocation}
+            onChange={(e) => handleInputChange(e, "endLocation")}
+            placeholder="Destination"
+          />
+        </div>
+      </div>
+      
+      <div className="space-y-2">
+        <Label htmlFor="estimated-km">Estimated Kilometers</Label>
+        <Input
+          id="estimated-km"
+          type="number"
+          value={state.privateVehicle.estimatedKm}
+          onChange={(e) => handleInputChange(e, "estimatedKm")}
+          placeholder="0"
+        />
+      </div>
+      
+      <div className="flex items-center space-x-2">
+        <Checkbox 
+          id="departing-from-approved" 
+          checked={state.privateVehicle.departingFromApprovedLocation}
+          onCheckedChange={handleDepartingFromApprovedChange}
+        />
+        <Label 
+          htmlFor="departing-from-approved"
+          className="text-sm"
+        >
+          Departing from depot/approved location (per EA 7.4.1)
+        </Label>
+      </div>
+      
+      {state.privateVehicle.estimatedKm > 0 && (
+        <Card className="bg-muted/50">
+          <CardContent className="pt-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="text-sm text-muted-foreground">
+                  Total Distance:
+                </span>
+                <p className="font-medium">{state.privateVehicle.estimatedKm} km</p>
+              </div>
+              <div>
+                <span className="text-sm text-muted-foreground">
+                  Allowance Rate:
+                </span>
+                <p className="font-medium">$0.96 per km</p>
+              </div>
+              <div>
+                <span className="text-sm text-muted-foreground">
+                  Total Allowance:
+                </span>
+                <p className="font-medium">${state.privateVehicle.calculatedAllowance.toFixed(2)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+const TransportOptions = () => {
+  const { state, dispatch } = useForm();
+  
+  const handleTransportOptionChange = (option: string, checked: boolean) => {
+    let updatedOptions = [...state.selectedTransportOptions];
+    
+    if (checked) {
+      if (!updatedOptions.includes(option as any)) {
+        updatedOptions.push(option as any);
+      }
+    } else {
+      updatedOptions = updatedOptions.filter(o => o !== option);
+    }
+    
+    dispatch({
+      type: "UPDATE_FIELD",
+      field: "selectedTransportOptions",
+      value: updatedOptions,
+    });
+  };
+  
+  const isTransportOptionSelected = (option: string): boolean => {
+    return state.selectedTransportOptions.includes(option as any);
+  };
+  
+  // Special handler for flights checkbox that also updates showFlights
+  const handleFlightsOptionChange = (checked: boolean) => {
+    handleTransportOptionChange("flights", checked);
+    
+    dispatch({
+      type: "UPDATE_FIELD",
+      field: "showFlights",
+      value: checked
+    });
+  };
+  
+  // Handler for private vehicle checkbox
+  const handlePrivateVehicleOptionChange = (checked: boolean) => {
+    handleTransportOptionChange("private_vehicle", checked);
+    
+    dispatch({
+      type: "UPDATE_FIELD",
+      field: "privateVehicle.usePrivateVehicle",
+      value: checked
+    });
   };
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <h2 className="text-xl font-semibold">Transport Options</h2>
-        <p className="text-gray-500">
-          Select and configure your required transport options for this trip.
-        </p>
+        <p className="text-gray-500">Select the transport options you'll need for this trip</p>
       </div>
-
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-start space-x-2">
-            <Checkbox
-              id="transport-flights"
-              checked={state.selectedTransportOptions.includes("flights")}
-              onCheckedChange={(checked) =>
-                handleTransportOptionChange(checked as boolean, "flights")
-              }
-            />
-            <div>
-              <Label htmlFor="transport-flights">Flights</Label>
-              <p className="text-sm text-muted-foreground">
-                Domestic or international flights
-              </p>
+      
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle>Transport Requirements</CardTitle>
+          <CardDescription>
+            Select all options that apply to your travel needs
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="flights" 
+                checked={isTransportOptionSelected("flights")}
+                onCheckedChange={handleFlightsOptionChange}
+              />
+              <div className="grid gap-1.5">
+                <Label htmlFor="flights" className="font-medium flex items-center">
+                  <Airplane className="h-4 w-4 mr-2" />
+                  Domestic Flights
+                </Label>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="car-hire" 
+                checked={isTransportOptionSelected("car_hire")}
+                onCheckedChange={(checked) => handleTransportOptionChange("car_hire", checked || false)}
+              />
+              <div className="grid gap-1.5">
+                <Label htmlFor="car-hire" className="font-medium flex items-center">
+                  <Car className="h-4 w-4 mr-2" />
+                  Car Hire
+                </Label>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="ferry" 
+                checked={isTransportOptionSelected("ferry")}
+                onCheckedChange={(checked) => handleTransportOptionChange("ferry", checked || false)}
+              />
+              <div className="grid gap-1.5">
+                <Label htmlFor="ferry" className="font-medium flex items-center">
+                  <Ship className="h-4 w-4 mr-2" />
+                  Ferry
+                </Label>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="private-vehicle" 
+                checked={isTransportOptionSelected("private_vehicle")}
+                onCheckedChange={handlePrivateVehicleOptionChange}
+              />
+              <div className="grid gap-1.5">
+                <Label htmlFor="private-vehicle" className="font-medium flex items-center">
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  Private Vehicle
+                </Label>
+              </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          <div className="flex items-start space-x-2">
-            <Checkbox
-              id="transport-car-hire"
-              checked={state.selectedTransportOptions.includes("car_hire")}
-              onCheckedChange={(checked) =>
-                handleTransportOptionChange(checked as boolean, "car_hire")
-              }
-            />
-            <div>
-              <Label htmlFor="transport-car-hire">Car Hire</Label>
-              <p className="text-sm text-muted-foreground">
-                Rental vehicle at destination
-              </p>
-            </div>
-          </div>
+      {/* Flights Section */}
+      {(isTransportOptionSelected("flights") || state.showFlights) && (
+        <Card className="shadow-none border">
+          <CardHeader className="pb-3 bg-muted/50">
+            <CardTitle className="text-base flex items-center">
+              <Airplane className="h-4 w-4 mr-2" />
+              Flights
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <FlightSection />
+          </CardContent>
+        </Card>
+      )}
 
-          <div className="flex items-start space-x-2">
-            <Checkbox
-              id="transport-ferry"
-              checked={state.selectedTransportOptions.includes("ferry")}
-              onCheckedChange={(checked) =>
-                handleTransportOptionChange(checked as boolean, "ferry")
-              }
-            />
-            <div>
-              <Label htmlFor="transport-ferry">Ferry</Label>
-              <p className="text-sm text-muted-foreground">
-                Ferry or boat transport
-              </p>
-            </div>
-          </div>
+      {/* Car Hire Section */}
+      {isTransportOptionSelected("car_hire") && (
+        <Card className="shadow-none border">
+          <CardHeader className="pb-3 bg-muted/50">
+            <CardTitle className="text-base flex items-center">
+              <Car className="h-4 w-4 mr-2" />
+              Car Hire
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <CarHireSection />
+          </CardContent>
+        </Card>
+      )}
 
-          <div className="flex items-start space-x-2">
-            <Checkbox
-              id="transport-private-vehicle"
-              checked={state.selectedTransportOptions.includes("private_vehicle")}
-              onCheckedChange={(checked) =>
-                handleTransportOptionChange(checked as boolean, "private_vehicle")
-              }
-            />
-            <div>
-              <Label htmlFor="transport-private-vehicle">Private Vehicle</Label>
-              <p className="text-sm text-muted-foreground">
-                Use of personal vehicle
-              </p>
-            </div>
-          </div>
-        </div>
+      {/* Ferry Section */}
+      {isTransportOptionSelected("ferry") && (
+        <Card className="shadow-none border">
+          <CardHeader className="pb-3 bg-muted/50">
+            <CardTitle className="text-base flex items-center">
+              <Ship className="h-4 w-4 mr-2" />
+              Ferry
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <FerrySection />
+          </CardContent>
+        </Card>
+      )}
 
-        {state.selectedTransportOptions.length === 0 && hasError("transportOptions") && (
-          <p className="text-destructive text-sm">
-            {state.errors.transportOptions}
-          </p>
-        )}
-
-        <Accordion
-          type="multiple"
-          defaultValue={state.selectedTransportOptions}
-          className="mt-6"
-        >
-          {/* Flights Section */}
-          {state.selectedTransportOptions.includes("flights") && (
-            <AccordionItem value="flights" className="border rounded-md px-4 mb-4">
-              <AccordionTrigger className="text-base font-medium py-4">
-                Flight Details
-              </AccordionTrigger>
-              <AccordionContent className="pb-4">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label 
-                        htmlFor="flight-from"
-                        className={hasError("flights-from") ? "text-destructive" : ""}
-                      >
-                        From
-                      </Label>
-                      <Input
-                        id="flight-from"
-                        placeholder="Departure airport/city"
-                        value={state.flights.from}
-                        onChange={(e) => handleFlightInputChange(e, "from")}
-                        className={hasError("flights-from") ? "border-destructive" : ""}
-                      />
-                      {hasError("flights-from") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["flights-from"]}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label 
-                        htmlFor="flight-to"
-                        className={hasError("flights-to") ? "text-destructive" : ""}
-                      >
-                        To
-                      </Label>
-                      <Input
-                        id="flight-to"
-                        placeholder="Arrival airport/city"
-                        value={state.flights.to}
-                        onChange={(e) => handleFlightInputChange(e, "to")}
-                        className={hasError("flights-to") ? "border-destructive" : ""}
-                      />
-                      {hasError("flights-to") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["flights-to"]}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label 
-                        htmlFor="flight-departure-date"
-                        className={hasError("flights-departure-date") ? "text-destructive" : ""}
-                      >
-                        Departure Date
-                      </Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="flight-departure-date"
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !state.flights.departureDate && "text-muted-foreground",
-                              hasError("flights-departure-date") && "border-destructive"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {state.flights.departureDate
-                              ? format(new Date(state.flights.departureDate), "PPP")
-                              : "Select date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={
-                              state.flights.departureDate
-                                ? new Date(state.flights.departureDate)
-                                : undefined
-                            }
-                            onSelect={(date) =>
-                              handleFlightDateChange(date, "departureDate")
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      {hasError("flights-departure-date") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["flights-departure-date"]}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="flight-departure-time">Departure Time</Label>
-                      <Input
-                        id="flight-departure-time"
-                        type="time"
-                        value={state.flights.departureTime}
-                        onChange={(e) => handleFlightInputChange(e, "departureTime")}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label 
-                        htmlFor="flight-return-date"
-                        className={hasError("flights-return-date") ? "text-destructive" : ""}
-                      >
-                        Return Date
-                      </Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="flight-return-date"
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !state.flights.returnDate && "text-muted-foreground",
-                              hasError("flights-return-date") && "border-destructive"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {state.flights.returnDate
-                              ? format(new Date(state.flights.returnDate), "PPP")
-                              : "Select date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={
-                              state.flights.returnDate
-                                ? new Date(state.flights.returnDate)
-                                : undefined
-                            }
-                            onSelect={(date) =>
-                              handleFlightDateChange(date, "returnDate")
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      {hasError("flights-return-date") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["flights-return-date"]}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="flight-return-time">Return Time</Label>
-                      <Input
-                        id="flight-return-time"
-                        type="time"
-                        value={state.flights.returnTime}
-                        onChange={(e) => handleFlightInputChange(e, "returnTime")}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="frequent-flyer">Frequent Flyer Number</Label>
-                      <Input
-                        id="frequent-flyer"
-                        placeholder="Optional"
-                        value={state.flights.frequentFlyerNumber}
-                        onChange={(e) =>
-                          handleFlightInputChange(e, "frequentFlyerNumber")
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="seat-preferences">Seat Preferences</Label>
-                      <Input
-                        id="seat-preferences"
-                        placeholder="e.g., Window, Aisle"
-                        value={state.flights.seatPreferences}
-                        onChange={(e) =>
-                          handleFlightInputChange(e, "seatPreferences")
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="meal-options">Meal Options/Dietary Requirements</Label>
-                    <Input
-                      id="meal-options"
-                      placeholder="e.g., Vegetarian, Gluten-free"
-                      value={state.flights.mealOptions}
-                      onChange={(e) => handleFlightInputChange(e, "mealOptions")}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="flight-notes">Additional Notes</Label>
-                    <Input
-                      id="flight-notes"
-                      placeholder="Any special requirements or information"
-                      value={state.flights.notes}
-                      onChange={(e) => handleFlightInputChange(e, "notes")}
-                    />
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          )}
-
-          {/* Car Hire Section */}
-          {state.selectedTransportOptions.includes("car_hire") && (
-            <AccordionItem value="car_hire" className="border rounded-md px-4 mb-4">
-              <AccordionTrigger className="text-base font-medium py-4">
-                Car Hire Details
-              </AccordionTrigger>
-              <AccordionContent className="pb-4">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label 
-                        htmlFor="car-pickup-location"
-                        className={hasError("car-pickup-location") ? "text-destructive" : ""}
-                      >
-                        Pickup Location
-                      </Label>
-                      <Input
-                        id="car-pickup-location"
-                        placeholder="Airport, city, or specific address"
-                        value={state.carHire.pickupLocation}
-                        onChange={(e) =>
-                          handleCarHireInputChange(e, "pickupLocation")
-                        }
-                        className={hasError("car-pickup-location") ? "border-destructive" : ""}
-                      />
-                      {hasError("car-pickup-location") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["car-pickup-location"]}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label 
-                        htmlFor="car-dropoff-location"
-                        className={hasError("car-dropoff-location") ? "text-destructive" : ""}
-                      >
-                        Dropoff Location
-                      </Label>
-                      <Input
-                        id="car-dropoff-location"
-                        placeholder="Same as pickup if returning to same location"
-                        value={state.carHire.dropoffLocation}
-                        onChange={(e) =>
-                          handleCarHireInputChange(e, "dropoffLocation")
-                        }
-                        className={hasError("car-dropoff-location") ? "border-destructive" : ""}
-                      />
-                      {hasError("car-dropoff-location") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["car-dropoff-location"]}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label 
-                        htmlFor="car-pickup-date"
-                        className={hasError("car-pickup-date") ? "text-destructive" : ""}
-                      >
-                        Pickup Date
-                      </Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="car-pickup-date"
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !state.carHire.pickupDate && "text-muted-foreground",
-                              hasError("car-pickup-date") && "border-destructive"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {state.carHire.pickupDate
-                              ? format(new Date(state.carHire.pickupDate), "PPP")
-                              : "Select date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={
-                              state.carHire.pickupDate
-                                ? new Date(state.carHire.pickupDate)
-                                : undefined
-                            }
-                            onSelect={(date) =>
-                              handleCarHireDateChange(date, "pickupDate")
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      {hasError("car-pickup-date") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["car-pickup-date"]}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="car-pickup-time">Pickup Time</Label>
-                      <Input
-                        id="car-pickup-time"
-                        type="time"
-                        value={state.carHire.pickupTime}
-                        onChange={(e) =>
-                          handleCarHireInputChange(e, "pickupTime")
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label 
-                        htmlFor="car-dropoff-date"
-                        className={hasError("car-dropoff-date") ? "text-destructive" : ""}
-                      >
-                        Dropoff Date
-                      </Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="car-dropoff-date"
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !state.carHire.dropoffDate && "text-muted-foreground",
-                              hasError("car-dropoff-date") && "border-destructive"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {state.carHire.dropoffDate
-                              ? format(new Date(state.carHire.dropoffDate), "PPP")
-                              : "Select date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={
-                              state.carHire.dropoffDate
-                                ? new Date(state.carHire.dropoffDate)
-                                : undefined
-                            }
-                            onSelect={(date) =>
-                              handleCarHireDateChange(date, "dropoffDate")
-                            }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      {hasError("car-dropoff-date") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["car-dropoff-date"]}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="car-dropoff-time">Dropoff Time</Label>
-                      <Input
-                        id="car-dropoff-time"
-                        type="time"
-                        value={state.carHire.dropoffTime}
-                        onChange={(e) =>
-                          handleCarHireInputChange(e, "dropoffTime")
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="vehicle-type">Vehicle Type</Label>
-                    <Select
-                      value={state.carHire.vehicleType}
-                      onValueChange={(value) =>
-                        dispatch({
-                          type: "UPDATE_FIELD",
-                          field: "carHire",
-                          value: {
-                            ...state.carHire,
-                            vehicleType: value,
-                          },
-                        })
-                      }
-                    >
-                      <SelectTrigger id="vehicle-type">
-                        <SelectValue placeholder="Select vehicle type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="economy">Economy</SelectItem>
-                        <SelectItem value="compact">Compact</SelectItem>
-                        <SelectItem value="mid_size">Mid-size</SelectItem>
-                        <SelectItem value="full_size">Full-size</SelectItem>
-                        <SelectItem value="suv">SUV</SelectItem>
-                        <SelectItem value="van">Van</SelectItem>
-                        <SelectItem value="luxury">Luxury</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          )}
-
-          {/* Ferry Section */}
-          {state.selectedTransportOptions.includes("ferry") && (
-            <AccordionItem value="ferry" className="border rounded-md px-4 mb-4">
-              <AccordionTrigger className="text-base font-medium py-4">
-                Ferry Details
-              </AccordionTrigger>
-              <AccordionContent className="pb-4">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label 
-                        htmlFor="ferry-from"
-                        className={hasError("ferry-from") ? "text-destructive" : ""}
-                      >
-                        From
-                      </Label>
-                      <Input
-                        id="ferry-from"
-                        placeholder="Departure port"
-                        value={state.ferry.from}
-                        onChange={(e) => handleFerryInputChange(e, "from")}
-                        className={hasError("ferry-from") ? "border-destructive" : ""}
-                      />
-                      {hasError("ferry-from") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["ferry-from"]}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label 
-                        htmlFor="ferry-to"
-                        className={hasError("ferry-to") ? "text-destructive" : ""}
-                      >
-                        To
-                      </Label>
-                      <Input
-                        id="ferry-to"
-                        placeholder="Arrival port"
-                        value={state.ferry.to}
-                        onChange={(e) => handleFerryInputChange(e, "to")}
-                        className={hasError("ferry-to") ? "border-destructive" : ""}
-                      />
-                      {hasError("ferry-to") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["ferry-to"]}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label 
-                        htmlFor="ferry-departure-date"
-                        className={hasError("ferry-departure-date") ? "text-destructive" : ""}
-                      >
-                        Departure Date
-                      </Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id="ferry-departure-date"
-                            variant="outline"
-                            className={cn(
-                              "w-full justify-start text-left font-normal",
-                              !state.ferry.departureDate && "text-muted-foreground",
-                              hasError("ferry-departure-date") && "border-destructive"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {state.ferry.departureDate
-                              ? format(new Date(state.ferry.departureDate), "PPP")
-                              : "Select date"}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={
-                              state.ferry.departureDate
-                                ? new Date(state.ferry.departureDate)
-                                : undefined
-                            }
-                            onSelect={handleFerryDateChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      {hasError("ferry-departure-date") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["ferry-departure-date"]}
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ferry-departure-time">Departure Time</Label>
-                      <Input
-                        id="ferry-departure-time"
-                        type="time"
-                        value={state.ferry.departureTime}
-                        onChange={(e) =>
-                          handleFerryInputChange(e, "departureTime")
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="vehicle-on-board"
-                      checked={state.ferry.vehicleOnBoard}
-                      onCheckedChange={handleVehicleOnBoardChange}
-                    />
-                    <Label htmlFor="vehicle-on-board">Vehicle on board</Label>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          )}
-
-          {/* Private Vehicle Section */}
-          {state.selectedTransportOptions.includes("private_vehicle") && (
-            <AccordionItem value="private_vehicle" className="border rounded-md px-4 mb-4">
-              <AccordionTrigger className="text-base font-medium py-4">
-                Private Vehicle Details
-              </AccordionTrigger>
-              <AccordionContent className="pb-4">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="start-location">Start Location</Label>
-                      <Input
-                        id="start-location"
-                        placeholder="Starting point"
-                        value={state.privateVehicle.startLocation}
-                        onChange={(e) =>
-                          handlePrivateVehicleInputChange(e, "startLocation")
-                        }
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="end-location">End Location</Label>
-                      <Input
-                        id="end-location"
-                        placeholder="Destination"
-                        value={state.privateVehicle.endLocation}
-                        onChange={(e) =>
-                          handlePrivateVehicleInputChange(e, "endLocation")
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label 
-                        htmlFor="estimated-km"
-                        className={hasError("private-vehicle-km") ? "text-destructive" : ""}
-                      >
-                        Estimated Kilometers
-                      </Label>
-                      <span className="text-sm text-muted-foreground">
-                        Rate: $0.96/km
-                      </span>
-                    </div>
-                    <Input
-                      id="estimated-km"
-                      type="number"
-                      min="0"
-                      placeholder="Total km for trip"
-                      value={state.privateVehicle.estimatedKm || ""}
-                      onChange={(e) =>
-                        handlePrivateVehicleInputChange(e, "estimatedKm")
-                      }
-                      className={hasError("private-vehicle-km") ? "border-destructive" : ""}
-                    />
-                    {hasError("private-vehicle-km") && (
-                      <p className="text-destructive text-sm">
-                        {state.errors["private-vehicle-km"]}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="bg-muted/40 p-3 rounded-md">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium">
-                        Calculated Allowance:
-                      </span>
-                      <span className="text-lg font-bold">
-                        ${state.privateVehicle.calculatedAllowance.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-2 border p-3 rounded-md bg-amber-50 border-amber-100">
-                    <div className="mt-1">
-                      <Info className="h-5 w-5 text-amber-500" />
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-sm text-amber-700">
-                        <strong>EA Compliance Note:</strong> Private vehicle use is only permitted if departing from a depot or approved location per EA 7.4.1.
-                      </p>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="approved-location"
-                          checked={state.privateVehicle.departingFromApprovedLocation}
-                          onCheckedChange={handleApprovedLocationChange}
-                        />
-                        <Label htmlFor="approved-location">
-                          I confirm this journey departs from an approved location
-                        </Label>
-                      </div>
-                      {hasError("private-vehicle-location") && (
-                        <p className="text-destructive text-sm">
-                          {state.errors["private-vehicle-location"]}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          )}
-        </Accordion>
-      </div>
+      {/* Private Vehicle Section */}
+      {isTransportOptionSelected("private_vehicle") && (
+        <Card className="shadow-none border">
+          <CardHeader className="pb-3 bg-muted/50">
+            <CardTitle className="text-base flex items-center">
+              <Briefcase className="h-4 w-4 mr-2" />
+              Private Vehicle
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <PrivateVehicleSection />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

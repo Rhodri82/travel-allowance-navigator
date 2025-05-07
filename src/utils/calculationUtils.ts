@@ -32,12 +32,19 @@ export const calculateBusinessNights = (
  * Determines the travel type based on business rules
  * @param consecutiveNights Number of consecutive business nights
  * @param cumulativeDays Total cumulative days (including this trip)
+ * @param isAboriginalLand Whether the trip is to aboriginal land
  * @returns The determined travel type
  */
 export const determineTravelType = (
   consecutiveNights: number,
-  cumulativeDays: number
+  cumulativeDays: number,
+  isAboriginalLand: boolean
 ): TravelType => {
+  // Aboriginal land takes precedence over all other classifications
+  if (isAboriginalLand) {
+    return "aboriginal_land";
+  }
+
   // If ≥ 365 days → Reportable LAFHA
   if (consecutiveNights >= 365) {
     return "reportable_lafha";
@@ -107,38 +114,77 @@ export const isBreakfastEligible = (departureTime: string): boolean => {
 };
 
 /**
- * Calculates accommodation rate based on travel type and conditions
+ * Calculates accommodation rate based on travel type, accommodation type, and conditions
  * @param travelType Travel type classification
+ * @param accommodationType Type of accommodation
  * @param isRemote Is remote location
  * @param isSubstandard Is substandard accommodation
  * @param isShortNotice Is short notice booking
+ * @param isApproved Is accommodation approved (for self-booked)
  * @returns The calculated accommodation rate
  */
 export const calculateAccommodationRate = (
   travelType: TravelType,
+  accommodationType: string,
   isRemote: boolean,
   isSubstandard: boolean,
-  isShortNotice: boolean
+  isShortNotice: boolean,
+  isApproved: boolean
 ): number => {
-  // Base rates by travel type
+  // Aboriginal Land has a fixed rate regardless of other factors
+  if (travelType === "aboriginal_land") {
+    return 280.00; // Fixed rate for Aboriginal Land
+  }
+  
+  // Base rates by travel type and accommodation type
   let baseRate = 0;
-  switch (travelType) {
-    case "short_stay":
-      baseRate = 148.70;
-      break;
-    case "long_stay":
-      baseRate = 268.34;
-      break;
-    case "reportable_lafha":
-      baseRate = 289.70;
-      break;
+  
+  if (accommodationType === "ctm") {
+    // Standard CTM rates
+    switch (travelType) {
+      case "short_stay":
+        baseRate = 148.70;
+        break;
+      case "long_stay":
+        baseRate = 268.34;
+        break;
+      case "reportable_lafha":
+        baseRate = 289.70;
+        break;
+    }
+  } else if (accommodationType === "private") {
+    // Private accommodation (friends/family) rates
+    baseRate = 95.00;
+  } else if (accommodationType === "self_booked") {
+    // Self-booked rates
+    if (isApproved) {
+      if (travelType === "short_stay") {
+        baseRate = 159.50;
+      } else {
+        baseRate = 285.00;
+      }
+    } else {
+      switch (travelType) {
+        case "short_stay":
+          baseRate = 148.70;
+          break;
+        case "long_stay":
+          baseRate = 268.34;
+          break;
+        case "reportable_lafha":
+          baseRate = 289.70;
+          break;
+      }
+    }
   }
   
   // Apply uplifts (these are stackable)
   let rate = baseRate;
   if (isRemote) rate *= 1.2;
   if (isSubstandard) rate *= 1.15;
-  if (isShortNotice) rate *= 1.1;
+  
+  // Short notice uplift is calculated separately at the total level
+  // to accommodate the first-night-only rule
   
   return Math.round(rate * 100) / 100; // Round to 2 decimal places
 };
@@ -155,8 +201,12 @@ export const calculateMealAllowance = (
   eligibleForMeals: boolean,
   businessDays: number,
   providedMeals: string[],
-  breakfastEligible: boolean
+  breakfastEligible: boolean,
+  isAboriginalLand: boolean
 ): number => {
+  // Aboriginal Land allowance includes meals
+  if (isAboriginalLand) return 0;
+  
   if (!eligibleForMeals) return 0;
   
   // Base daily meal rate
@@ -208,6 +258,12 @@ export const calculateVehicleAllowance = (
 export const determineSAPCodes = (formState: FormState): SAPCode[] => {
   const codes: SAPCode[] = [];
   
+  // Aboriginal land codes take precedence
+  if (formState.isAboriginalLand) {
+    codes.push("OR12", "OR13"); // Aboriginal Lands codes
+    return codes;
+  }
+  
   // Base allowance code based on travel type
   switch (formState.travelType) {
     case "short_stay":
@@ -219,14 +275,6 @@ export const determineSAPCodes = (formState: FormState): SAPCode[] => {
     case "reportable_lafha":
       codes.push("OR24"); // Reportable LAFHA
       break;
-  }
-  
-  // Special case for Aboriginal Lands
-  if (
-    formState.isRemote && 
-    /aboriginal|indigenous|first.nation/i.test(formState.workLocation)
-  ) {
-    codes.push("OR12", "OR13"); // Aboriginal Lands codes
   }
   
   // Meal codes
@@ -280,17 +328,18 @@ export const recalculateAllowances = (formState: FormState): FormState => {
   // Create a copy of the form state to update
   const updatedState = { ...formState };
   
-  // Calculate business nights
+  // Calculate business nights (excluding personal travel days)
   updatedState.consecutiveNights = calculateBusinessNights(
     formState.departureDate,
     formState.returnDate,
     formState.personalTravelDates
   );
   
-  // Determine travel type
+  // Determine travel type (with Aboriginal Land override)
   updatedState.travelType = determineTravelType(
     updatedState.consecutiveNights,
-    updatedState.cumulativeDays + updatedState.consecutiveNights
+    updatedState.cumulativeDays + updatedState.consecutiveNights,
+    formState.isAboriginalLand
   );
   
   // Calculate accommodation nights (same as business nights if accommodation required)
@@ -298,12 +347,14 @@ export const recalculateAllowances = (formState: FormState): FormState => {
     updatedState.accommodationNights = updatedState.consecutiveNights;
   }
   
-  // Calculate accommodation rate
+  // Calculate accommodation rate (with Aboriginal Land override)
   updatedState.accommodationRate = calculateAccommodationRate(
     updatedState.travelType,
+    formState.accommodationType,
     formState.isRemote,
     formState.isSubstandard,
-    formState.isShortNotice
+    formState.isShortNotice,
+    formState.accommodationApproved
   );
   
   // Check meals eligibility
@@ -327,26 +378,50 @@ export const recalculateAllowances = (formState: FormState): FormState => {
     );
   }
   
+  // Calculate accommodation total
+  let accommodationTotal = 0;
+  if (formState.isAboriginalLand) {
+    // Fixed rate for Aboriginal Land ($280 per day)
+    accommodationTotal = 280 * (updatedState.consecutiveNights + 1);
+  } else if (formState.accommodationRequired) {
+    // Short notice is only applied for the first night
+    if (formState.isShortNotice && formState.shortNoticeFirstNightOnly && updatedState.accommodationNights > 0) {
+      // First night with 10% uplift
+      const firstNightRate = updatedState.accommodationRate * 1.1;
+      
+      // Remaining nights at standard rate
+      const remainingNights = updatedState.accommodationNights - 1;
+      const remainingNightsTotal = remainingNights > 0 ? remainingNights * updatedState.accommodationRate : 0;
+      
+      accommodationTotal = firstNightRate + remainingNightsTotal;
+    } else if (formState.isShortNotice && !formState.shortNoticeFirstNightOnly) {
+      // Apply short notice uplift to all nights
+      accommodationTotal = updatedState.accommodationNights * (updatedState.accommodationRate * 1.1);
+    } else {
+      // Standard calculation with no short notice
+      accommodationTotal = updatedState.accommodationNights * updatedState.accommodationRate;
+    }
+  }
+  
   // Calculate meals allowance
   const mealsAllowance = calculateMealAllowance(
     updatedState.eligibleForMeals,
     updatedState.consecutiveNights + 1, // Days = nights + 1
     formState.providedMeals,
-    updatedState.breakfastEligible
+    updatedState.breakfastEligible,
+    formState.isAboriginalLand
   );
+  
+  // Calculate vehicle allowance
+  const vehicleTotal = updatedState.privateVehicle.calculatedAllowance;
+  
+  // Calculate uplifts (simplified)
+  const upliftsTotal = 0;
   
   // Determine applicable SAP codes
   const sapCodes = determineSAPCodes(updatedState);
   
-  // Calculate total allowances
-  const accommodationTotal = formState.accommodationRequired 
-    ? updatedState.accommodationNights * updatedState.accommodationRate
-    : 0;
-  
-  const vehicleTotal = updatedState.privateVehicle.calculatedAllowance;
-  
-  const upliftsTotal = 0; // Complex calculation omitted for simplicity
-  
+  // Calculate total allowance
   const totalAllowance = accommodationTotal + mealsAllowance + vehicleTotal + upliftsTotal;
   
   // Check if receipts are required
@@ -361,7 +436,7 @@ export const recalculateAllowances = (formState: FormState): FormState => {
     sapCodes,
     totalNights: updatedState.accommodationNights,
     totalDays: updatedState.accommodationNights + 1,
-    fbtApplicable: updatedState.travelType !== "short_stay", // FBT applies to LAFHA
+    fbtApplicable: updatedState.travelType !== "short_stay" && !formState.isAboriginalLand,
     accommodation: accommodationTotal,
     meals: mealsAllowance,
     vehicle: vehicleTotal,

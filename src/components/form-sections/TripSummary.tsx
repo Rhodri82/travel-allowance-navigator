@@ -25,10 +25,11 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, X } from "lucide-react";
+import { CalendarIcon, Clock, Flag, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const TripSummary = () => {
   const { state, dispatch } = useForm();
@@ -83,6 +84,15 @@ const TripSummary = () => {
       type: "UPDATE_FIELD",
       field,
       value: e.target.value,
+    });
+  };
+
+  // Handle aboriginal land toggle
+  const handleAboriginalLandChange = (checked: boolean) => {
+    dispatch({
+      type: "UPDATE_FIELD",
+      field: "isAboriginalLand",
+      value: checked,
     });
   };
 
@@ -202,12 +212,14 @@ const TripSummary = () => {
           )}
 
           <div className="space-y-2">
-            <Label 
-              htmlFor="work-location"
-              className={hasError("workLocation") ? "text-destructive" : ""}
-            >
-              Location of Work
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label 
+                htmlFor="work-location"
+                className={hasError("workLocation") ? "text-destructive" : ""}
+              >
+                Location of Work
+              </Label>
+            </div>
             <Input
               id="work-location"
               value={state.workLocation}
@@ -220,6 +232,29 @@ const TripSummary = () => {
                 {state.errors.workLocation}
               </p>
             )}
+            
+            {/* Aboriginal Land Checkbox */}
+            <div className="flex items-center space-x-2 mt-2">
+              <Checkbox 
+                id="aboriginal-land" 
+                checked={state.isAboriginalLand}
+                onCheckedChange={handleAboriginalLandChange}
+              />
+              <div className="grid gap-1">
+                <Label 
+                  htmlFor="aboriginal-land"
+                  className="flex items-center text-sm font-medium"
+                >
+                  Aboriginal Land
+                  <Flag className="h-4 w-4 ml-2 text-amber-500" />
+                </Label>
+                {state.isAboriginalLand && (
+                  <p className="text-xs text-muted-foreground">
+                    This trip will be eligible for the fixed Aboriginal Land allowance of $280 per day.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -301,6 +336,7 @@ const TripSummary = () => {
                     selected={state.departureDate ? new Date(state.departureDate) : undefined}
                     onSelect={handleDepartureDateChange}
                     initialFocus
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -363,6 +399,7 @@ const TripSummary = () => {
                     selected={state.returnDate ? new Date(state.returnDate) : undefined}
                     onSelect={handleReturnDateChange}
                     initialFocus
+                    className="pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -396,12 +433,15 @@ const TripSummary = () => {
             </div>
           </div>
 
-          <Card className="border-dashed">
+          <Card className={cn("border-dashed", state.hasPersonalTravel && "border-amber-300 bg-amber-50")}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="text-base">Personal Travel</CardTitle>
-                  <CardDescription>
+                  <CardTitle className={cn("text-base", state.hasPersonalTravel && "text-amber-800")}>
+                    Personal Travel
+                    {state.hasPersonalTravel && " (Impacts Allowance)"}
+                  </CardTitle>
+                  <CardDescription className={state.hasPersonalTravel ? "text-amber-700" : ""}>
                     Declare any personal days during this trip
                   </CardDescription>
                 </div>
@@ -434,6 +474,7 @@ const TripSummary = () => {
                             selected={personalDate}
                             onSelect={setPersonalDate}
                             initialFocus
+                            className="pointer-events-auto"
                           />
                         </PopoverContent>
                       </Popover>
@@ -475,9 +516,14 @@ const TripSummary = () => {
                     </p>
                   )}
 
-                  <p className="text-sm text-muted-foreground">
-                    Note: Personal travel dates will be excluded from LAFHA calculations.
-                  </p>
+                  <div className="p-3 border border-amber-200 rounded-md bg-amber-50/50 text-amber-800">
+                    <p className="text-sm font-medium">Important:</p>
+                    <ul className="text-sm list-disc pl-5 mt-1">
+                      <li>Personal travel dates will be excluded from allowance calculations</li>
+                      <li>No accommodation or meal allowances will be provided on these dates</li>
+                      <li>These dates may affect your LAFHA classification</li>
+                    </ul>
+                  </div>
                 </div>
               </CardContent>
             )}

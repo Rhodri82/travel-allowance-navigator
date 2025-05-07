@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, AlertTriangle, Info } from "lucide-react";
+import { AlertCircle, AlertTriangle, Info, Flag } from "lucide-react";
 import { SAPCode, TravelType } from "@/context/FormContext";
 import {
   Tooltip,
@@ -49,6 +49,8 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
         return "LAFHA (Long Stay)";
       case "reportable_lafha":
         return "Reportable LAFHA";
+      case "aboriginal_land":
+        return "Aboriginal Land Allowance";
       default:
         return "Unknown";
     }
@@ -63,6 +65,8 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
         return "secondary";
       case "reportable_lafha":
         return "destructive";
+      case "aboriginal_land":
+        return "warning";
       default:
         return "outline";
     }
@@ -125,9 +129,11 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
                     {formatTravelType(travelType)}
                   </h3>
                   <Badge variant={getTravelTypeBadge(travelType)}>
-                    {travelType === "short_stay" 
-                      ? "Travel Allowance" 
-                      : "LAFHA"}
+                    {state.isAboriginalLand 
+                      ? "Aboriginal Land" 
+                      : travelType === "short_stay" 
+                        ? "Travel Allowance" 
+                        : "LAFHA"}
                   </Badge>
                 </div>
               </div>
@@ -137,21 +143,55 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
               </div>
             </div>
             
-            <div className="p-3 rounded-md bg-muted text-sm">
-              <div className="flex">
-                <div className="mr-2 mt-0.5">
-                  <Info className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-semibold">Classification Rules:</p>
-                  <ul className="list-disc ml-5 mt-1 text-muted-foreground">
-                    <li>&lt; 21 consecutive nights AND &lt; 90 cumulative days → <strong>Travel Allowance</strong></li>
-                    <li>≥ 21 nights OR ≥ 90 days → <strong>LAFHA</strong></li>
-                    <li>≥ 365 days → <strong>Reportable LAFHA</strong></li>
-                  </ul>
+            {state.hasPersonalTravel && state.personalTravelDates.length > 0 && (
+              <div className="p-3 rounded-md bg-amber-100 border border-amber-300 text-sm">
+                <div className="flex">
+                  <div className="mr-2 mt-0.5">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <div className="text-amber-800">
+                    <p className="font-medium">Personal Travel Dates Impact</p>
+                    <p>
+                      {state.personalTravelDates.length} {state.personalTravelDates.length === 1 ? 'day' : 'days'} of
+                      personal travel have been excluded from your allowance calculation.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+            
+            {state.isAboriginalLand ? (
+              <div className="p-3 rounded-md bg-amber-50 text-sm">
+                <div className="flex">
+                  <div className="mr-2 mt-0.5">
+                    <Flag className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-amber-800">Aboriginal Land Allowance:</p>
+                    <p className="text-amber-700">
+                      This trip is classified as Aboriginal Land travel, which provides a fixed $280 per day
+                      allowance regardless of other factors.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3 rounded-md bg-muted text-sm">
+                <div className="flex">
+                  <div className="mr-2 mt-0.5">
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-semibold">Classification Rules:</p>
+                    <ul className="list-disc ml-5 mt-1 text-muted-foreground">
+                      <li>&lt; 21 consecutive nights AND &lt; 90 cumulative days → <strong>Travel Allowance</strong></li>
+                      <li>≥ 21 nights OR ≥ 90 days → <strong>LAFHA</strong></li>
+                      <li>≥ 365 days → <strong>Reportable LAFHA</strong></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {travelType === "reportable_lafha" && (
               <div className="flex p-3 rounded-md bg-destructive/10 text-sm">
@@ -190,7 +230,17 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {state.calculatedAllowances.accommodation > 0 && (
+                  {state.calculatedAllowances.sapCodes.includes('OR12') && (
+                    <TableRow>
+                      <TableCell>
+                        <span className="font-mono">OR12/OR13</span>
+                      </TableCell>
+                      <TableCell>Aboriginal Lands Allowance</TableCell>
+                      <TableCell className="text-right">${state.calculatedAllowances.accommodation.toFixed(2)}</TableCell>
+                    </TableRow>
+                  )}
+                  
+                  {state.calculatedAllowances.accommodation > 0 && !state.calculatedAllowances.sapCodes.includes('OR12') && (
                     <TableRow>
                       <TableCell>
                         <span className="font-mono">{state.calculatedAllowances.sapCodes[0]}</span>
@@ -258,13 +308,23 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
                 
                 <div>
                   <span className="text-sm text-muted-foreground">Work Location:</span>
-                  <p className="font-medium">{state.workLocation}</p>
+                  <p className="font-medium flex items-center">
+                    {state.workLocation}
+                    {state.isAboriginalLand && <Flag className="h-4 w-4 ml-2 text-amber-500" />}
+                  </p>
                 </div>
                 
                 {state.hasPersonalTravel && state.personalTravelDates.length > 0 && (
                   <div>
-                    <span className="text-sm text-muted-foreground">Personal Travel Days:</span>
-                    <p className="font-medium">{state.personalTravelDates.length} days excluded</p>
+                    <span className="text-sm text-muted-foreground flex items-center">
+                      Personal Travel Days:
+                      <Badge variant="outline" className="ml-2 text-amber-700 bg-amber-50 border-amber-200">
+                        {state.personalTravelDates.length} days excluded
+                      </Badge>
+                    </span>
+                    <p className="text-xs text-amber-700 mt-1">
+                      No allowances are paid for personal travel dates
+                    </p>
                   </div>
                 )}
                 
@@ -346,7 +406,22 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
                   </div>
                 )}
                 
-                {state.travelType !== "short_stay" && (
+                {state.isAboriginalLand && (
+                  <div className="flex p-3 rounded-md bg-amber-50 border border-amber-100 text-sm">
+                    <div className="mr-2 mt-0.5">
+                      <Flag className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <div className="text-amber-700">
+                      <p className="font-medium">Aboriginal Land Allowance</p>
+                      <p>
+                        Fixed rate of $280.00 per day applies.
+                        All meals and accommodation are included.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {!state.isAboriginalLand && state.travelType !== "short_stay" && (
                   <div>
                     <span className="text-sm text-muted-foreground">Tax Implications:</span>
                     <p className="font-medium">LAFHA has different tax treatment than Travel Allowance</p>
@@ -356,7 +431,7 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
                 <div>
                   <span className="text-sm text-muted-foreground">Primary SAP Code:</span>
                   <p className="font-mono font-medium">
-                    {state.calculatedAllowances.sapCodes[0]}
+                    {state.isAboriginalLand ? 'OR12/OR13' : state.calculatedAllowances.sapCodes[0]}
                   </p>
                 </div>
               </CardContent>
