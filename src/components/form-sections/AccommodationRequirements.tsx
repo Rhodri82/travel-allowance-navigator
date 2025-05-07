@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useForm } from "@/context/FormContext";
 import {
@@ -86,8 +87,8 @@ const AccommodationRequirements = () => {
       field === "isRemote" ? checked : state.isRemote,
       field === "isSubstandard" ? checked : state.isSubstandard,
       field === "isShortNotice" ? checked : state.isShortNotice,
-      state.accommodationType,
-      state.accommodationApproved
+      state.accommodationType || "",
+      state.accommodationApproved ? "true" : "false"
     );
 
     dispatch({
@@ -112,8 +113,8 @@ const AccommodationRequirements = () => {
     state.isRemote,
     state.isSubstandard,
     state.isShortNotice,
-    state.accommodationType,
-    state.accommodationApproved
+    state.accommodationType || "",
+    state.accommodationApproved ? "true" : "false"
   );
 
   // Determine if field has error
