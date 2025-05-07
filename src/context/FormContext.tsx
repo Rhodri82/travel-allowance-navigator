@@ -29,6 +29,12 @@ export type SAPCode =
   | "0A50" // Additional meals
   | "0A57"; // Meal supplements
 
+// Define meal availability by day
+export interface DailyMeal {
+  day: string; // Date in YYYY-MM-DD format
+  provided: MealType[];
+}
+
 // Define the traveler information
 export interface Traveler {
   id: string;
@@ -65,6 +71,7 @@ export interface FormState {
   tripPurposeOther?: string;
   workLocation: string;
   isAboriginalLand: boolean;
+  aboriginalLandBonus: boolean; // New field for Aboriginal Land bonus
   workOrder: string;
   costCentre: string;
   departureDate: string;
@@ -82,7 +89,7 @@ export interface FormState {
   // Section 4: Accommodation
   accommodationRequired: boolean;
   accommodationType: AccommodationType | "";
-  accommodationApproved: boolean;
+  accommodationApproved: boolean; // Kept for backward compatibility
   isRemote: boolean;
   isSubstandard: boolean;
   isShortNotice: boolean;
@@ -133,6 +140,7 @@ export interface FormState {
   eligibleForMeals: boolean;
   mealsProvided: boolean;
   providedMeals: MealType[];
+  dailyMeals: DailyMeal[]; // New field for daily meal tracking
   breakfastEligible: boolean;
 
   // Section 7: LAFHA & Allowance Calculation (calculated)
@@ -146,6 +154,7 @@ export interface FormState {
     meals: number;
     vehicle: number;
     uplifts: number;
+    aboriginalLandBonus: number; // New field for Aboriginal Land bonus
     total: number;
   };
 
@@ -178,6 +187,7 @@ const initialState: FormState = {
   tripPurpose: "",
   workLocation: "",
   isAboriginalLand: false,
+  aboriginalLandBonus: false, // Initialize Aboriginal Land bonus
   workOrder: "",
   costCentre: "",
   departureDate: "",
@@ -195,11 +205,11 @@ const initialState: FormState = {
   // Section 4: Accommodation
   accommodationRequired: false,
   accommodationType: "",
-  accommodationApproved: false,
+  accommodationApproved: false, // Kept for backward compatibility
   isRemote: false,
   isSubstandard: false,
   isShortNotice: false,
-  shortNoticeFirstNightOnly: true, // Default to true for the short notice first night only logic
+  shortNoticeFirstNightOnly: true,
   accommodationNights: 0,
   accommodationRate: 0,
 
@@ -258,6 +268,7 @@ const initialState: FormState = {
   eligibleForMeals: false,
   mealsProvided: false,
   providedMeals: [],
+  dailyMeals: [], // Initialize daily meals array
   breakfastEligible: false,
 
   // Section 7: LAFHA & Allowance Calculation (calculated)
@@ -271,6 +282,7 @@ const initialState: FormState = {
     meals: 0,
     vehicle: 0,
     uplifts: 0,
+    aboriginalLandBonus: 0, // Initialize Aboriginal Land bonus
     total: 0,
   },
 
@@ -305,6 +317,8 @@ type ActionType =
   | { type: "ADD_FLIGHT" }
   | { type: "REMOVE_FLIGHT"; id: string }
   | { type: "UPDATE_FLIGHT"; id: string; field: string; value: any }
+  | { type: "ADD_DAILY_MEAL"; date: string; mealType: MealType }
+  | { type: "REMOVE_DAILY_MEAL"; date: string; mealType: MealType }
   | { type: "SET_ERRORS"; errors: Record<string, string> }
   | { type: "CLEAR_ERROR"; field: string }
   | { type: "NEXT_STEP" }
@@ -447,7 +461,7 @@ const formReducer = (state: FormState, action: ActionType): FormState => {
           }
         } else if (state.accommodationType === "private") {
           // Private accommodation (friends/family) rates
-          accommodationRate = 95.00; // Lower rate for private accommodation
+          accommodationRate = 268.34; // Lower rate for private accommodation
         } else if (state.accommodationType === "self_booked") {
           // Self-booked rates
           if (state.accommodationApproved) {
@@ -483,7 +497,7 @@ const formReducer = (state: FormState, action: ActionType): FormState => {
           // Calculate regular nights at normal rate
           const regularNightsRate = (state.accommodationNights - 1) * accommodationRate;
           // Calculate first night with uplift
-          const firstNightRate = baseRate * 1.1;
+          const firstNightRate = accommodationRate * 1.1;
           // Total is combined
           accommodationTotal = regularNightsRate + firstNightRate;
         } else if (state.isShortNotice && !state.shortNoticeFirstNightOnly) {
@@ -497,23 +511,54 @@ const formReducer = (state: FormState, action: ActionType): FormState => {
       }
       
       // Aboriginal Land Allowance overrides other calculations
+      let aboriginalLandTotal = 0;
+      let aboriginalLandBonus = 0;
+      
       if (state.isAboriginalLand) {
-        const aboriginalLandDailyRate = 280.00; // $280/day fixed rate
+        const aboriginalLandDailyRate = 268.34; // $268.34/day base rate (OR12)
+        const aboriginalLandBonusRate = 21.20; // $21.20/day bonus rate (OR13)
         const businessDays = state.consecutiveNights + 1;
-        accommodationTotal = aboriginalLandDailyRate * businessDays;
-        accommodationRate = aboriginalLandDailyRate;
+        
+        // Base Aboriginal Land allowance
+        aboriginalLandTotal = aboriginalLandDailyRate * businessDays;
+        
+        // Add bonus if selected
+        if (state.aboriginalLandBonus) {
+          aboriginalLandBonus = aboriginalLandBonusRate * businessDays;
+        }
+        
+        // Override accommodation total when on Aboriginal Land
+        accommodationTotal = 0;
       }
       
-      // Calculate meals allowance
+      // Calculate meals allowance - EA 2024 rates
       let mealsTotal = 0;
       if (state.eligibleForMeals && !state.isAboriginalLand) {
-        // Base rate of $75/day for meals (simplified)
-        const mealRate = 75;
-        const mealsDeducted = state.providedMeals.length * (mealRate / 3);
-        mealsTotal = (state.consecutiveNights + 1) * mealRate - mealsDeducted;
-      } else if (state.eligibleForMeals && state.isAboriginalLand) {
-        // Meals are included in the Aboriginal Land allowance
-        mealsTotal = 0;
+        // EA 2024 meal rates
+        const breakfastRate = 32.72;
+        const lunchRate = 17.03;
+        const dinnerRate = 12.12;
+        const totalDailyRate = breakfastRate + lunchRate + dinnerRate;
+        
+        // Calculate deductions for provided meals
+        let deduction = 0;
+        state.providedMeals.forEach(meal => {
+          switch (meal) {
+            case "breakfast":
+              deduction += breakfastRate;
+              break;
+            case "lunch":
+              deduction += lunchRate;
+              break;
+            case "dinner":
+              deduction += dinnerRate;
+              break;
+          }
+        });
+        
+        // Calculate total meal allowance
+        mealsTotal = ((state.consecutiveNights + 1) * totalDailyRate) - 
+          (state.providedMeals.length * (totalDailyRate / 3));
       }
       
       // Calculate vehicle allowance
@@ -529,7 +574,10 @@ const formReducer = (state: FormState, action: ActionType): FormState => {
       
       // Aboriginal land codes take precedence
       if (state.isAboriginalLand) {
-        sapCodes.push("OR12", "OR13");
+        sapCodes.push("OR12");
+        if (state.aboriginalLandBonus) {
+          sapCodes.push("OR13");
+        }
       } else {
         // Standard codes based on travel type
         if (state.travelType === "short_stay") {
@@ -558,14 +606,17 @@ const formReducer = (state: FormState, action: ActionType): FormState => {
       // Receipt requirement logic
       const receiptRequired = 
         state.accommodationType === "self_booked" ||
-        (accommodationTotal + mealsTotal + vehicleTotal + upliftsTotal) > 300;
+        (accommodationTotal + mealsTotal + vehicleTotal + upliftsTotal + aboriginalLandTotal + aboriginalLandBonus) > 300;
       
       // FBT applicability
       const fbtApplicable = state.travelType !== "short_stay" && !state.isAboriginalLand;
       
+      // Calculate total with Aboriginal Land allowance
+      const total = accommodationTotal + mealsTotal + vehicleTotal + upliftsTotal + aboriginalLandTotal + aboriginalLandBonus;
+      
       return {
         ...state,
-        accommodationRate, // Store the base rate (without short notice adjustments)
+        accommodationRate,
         calculatedAllowances: {
           travelType: state.travelType,
           sapCodes,
@@ -576,10 +627,63 @@ const formReducer = (state: FormState, action: ActionType): FormState => {
           meals: mealsTotal,
           vehicle: vehicleTotal,
           uplifts: upliftsTotal,
-          total: accommodationTotal + mealsTotal + vehicleTotal + upliftsTotal,
+          aboriginalLandBonus: aboriginalLandBonus,
+          total: total,
         },
         receiptRequired
       };
+    }
+    
+    case "ADD_DAILY_MEAL": {
+      // Check if we already have an entry for this date
+      const existingDayIndex = state.dailyMeals.findIndex(day => day.day === action.date);
+      
+      if (existingDayIndex >= 0) {
+        // Update existing day
+        const updatedDailyMeals = [...state.dailyMeals];
+        if (!updatedDailyMeals[existingDayIndex].provided.includes(action.mealType)) {
+          updatedDailyMeals[existingDayIndex] = {
+            ...updatedDailyMeals[existingDayIndex],
+            provided: [...updatedDailyMeals[existingDayIndex].provided, action.mealType]
+          };
+        }
+        return {
+          ...state,
+          dailyMeals: updatedDailyMeals
+        };
+      } else {
+        // Add new day
+        return {
+          ...state,
+          dailyMeals: [...state.dailyMeals, {
+            day: action.date,
+            provided: [action.mealType]
+          }]
+        };
+      }
+    }
+    
+    case "REMOVE_DAILY_MEAL": {
+      const existingDayIndex = state.dailyMeals.findIndex(day => day.day === action.date);
+      
+      if (existingDayIndex >= 0) {
+        const updatedDailyMeals = [...state.dailyMeals];
+        updatedDailyMeals[existingDayIndex] = {
+          ...updatedDailyMeals[existingDayIndex],
+          provided: updatedDailyMeals[existingDayIndex].provided.filter(meal => meal !== action.mealType)
+        };
+        
+        // Remove the day entry if no meals are provided
+        if (updatedDailyMeals[existingDayIndex].provided.length === 0) {
+          updatedDailyMeals.splice(existingDayIndex, 1);
+        }
+        
+        return {
+          ...state,
+          dailyMeals: updatedDailyMeals
+        };
+      }
+      return state;
     }
     
     case "SET_ERRORS":

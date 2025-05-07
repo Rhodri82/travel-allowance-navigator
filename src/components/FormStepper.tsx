@@ -1,7 +1,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Check, CircleDot } from "lucide-react";
+import { Check } from "lucide-react";
 import { useForm } from "@/context/FormContext";
 
 interface FormStepperProps {
@@ -11,15 +11,16 @@ interface FormStepperProps {
 const FormStepper: React.FC<FormStepperProps> = ({ currentStep }) => {
   const { state, dispatch } = useForm();
   
-  // Define form steps
+  // Define form steps - updated to match the new flow
   const steps = [
-    { id: 1, label: "Traveler Setup" },
+    { id: 1, label: "Traveller Details" },
     { id: 2, label: "Trip Summary" },
     { id: 3, label: "Accommodation" },
     { id: 4, label: "Transport" },
     { id: 5, label: "Meals" },
-    { id: 6, label: "Payment Options" },
-    { id: 7, label: "Summary & Approval" },
+    { id: 6, label: "Allowance Review" },
+    { id: 7, label: "Payment Details" },
+    { id: 8, label: "Summary & Declaration" },
   ];
   
   // Navigate to specific step when clicking on the step indicator

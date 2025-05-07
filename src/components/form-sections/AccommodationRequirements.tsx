@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useForm } from "@/context/FormContext";
 import {
@@ -17,8 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Switch } from "@/components/ui/switch";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -58,15 +58,6 @@ const AccommodationRequirements = () => {
       field: "accommodationType",
       value,
     });
-
-    // Reset approval if not self-booked
-    if (value !== "self_booked") {
-      dispatch({
-        type: "UPDATE_FIELD",
-        field: "accommodationApproved",
-        value: false,
-      });
-    }
   };
 
   // Handle checkbox changes
@@ -86,23 +77,14 @@ const AccommodationRequirements = () => {
       field === "isRemote" ? checked : state.isRemote,
       field === "isSubstandard" ? checked : state.isSubstandard,
       field === "isShortNotice" ? checked : state.isShortNotice,
-      state.accommodationType || "",
-      state.accommodationApproved
+      state.accommodationType,
+      true // Always assume approved now, as per requirements
     );
 
     dispatch({
       type: "UPDATE_FIELD",
       field: "accommodationRate",
       value: rate,
-    });
-  };
-
-  // Handle approval toggle for self-booked
-  const handleApprovalToggle = (checked: boolean) => {
-    dispatch({
-      type: "UPDATE_FIELD",
-      field: "accommodationApproved",
-      value: checked,
     });
   };
 
@@ -113,12 +95,26 @@ const AccommodationRequirements = () => {
     state.isSubstandard,
     state.isShortNotice,
     state.accommodationType || "",
-    state.accommodationApproved
+    true // Always assume approved now, as per requirements
   );
 
   // Determine if field has error
   const hasError = (field: string) => {
     return Boolean(state.errors[field]);
+  };
+
+  // Determine accommodation rate based on type
+  const getAccommodationRateDisplay = (type: string): string => {
+    switch (type) {
+      case "ctm":
+        return "$148.70/day";
+      case "private":
+        return "$268.34/day";
+      case "self_booked":
+        return "$289.70/day";
+      default:
+        return "";
+    }
   };
 
   return (
@@ -159,9 +155,9 @@ const AccommodationRequirements = () => {
                 <SelectValue placeholder="Select accommodation type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ctm">CTM (Corporate Travel Management)</SelectItem>
-                <SelectItem value="private">Private (staying with friends/family)</SelectItem>
-                <SelectItem value="self_booked">Self-booked</SelectItem>
+                <SelectItem value="ctm">CTM Booked ({getAccommodationRateDisplay("ctm")})</SelectItem>
+                <SelectItem value="private">Private - friends/family ({getAccommodationRateDisplay("private")})</SelectItem>
+                <SelectItem value="self_booked">Self-booked ({getAccommodationRateDisplay("self_booked")})</SelectItem>
               </SelectContent>
             </Select>
             {hasError("accommodationType") && (
@@ -174,41 +170,20 @@ const AccommodationRequirements = () => {
           {state.accommodationType === "self_booked" && (
             <Card className="border-dashed">
               <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-base">Self-booked Accommodation Approval</CardTitle>
-                    <CardDescription>
-                      Required for EA 7.3.2.2 exceptions
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      checked={state.accommodationApproved}
-                      onCheckedChange={handleApprovalToggle}
-                    />
-                    <span className="text-sm font-medium">
-                      {state.accommodationApproved ? "Approved" : "Not Approved"}
-                    </span>
-                  </div>
-                </div>
+                <CardTitle className="text-base">Self-booked Accommodation</CardTitle>
+                <CardDescription>
+                  Important information for self-booked accommodation
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="p-3 bg-muted/50 rounded-md text-sm space-y-2">
-                  <p>
-                    <strong>IMPORTANT:</strong> Self-booked accommodation requires prior approval.
-                  </p>
-                  <p>
-                    Contact the travel team for exceptions under EA 7.3.2.2.
-                  </p>
-                  <p>
-                    Receipts <strong>must</strong> be provided for all self-booked accommodation.
-                  </p>
+                  <div className="flex">
+                    <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5 mr-2 flex-shrink-0" />
+                    <p>
+                      Receipts must be uploaded after travel for reimbursement.
+                    </p>
+                  </div>
                 </div>
-                {hasError("accommodationApproved") && (
-                  <p className="text-destructive text-sm mt-3">
-                    {state.errors.accommodationApproved}
-                  </p>
-                )}
               </CardContent>
             </Card>
           )}

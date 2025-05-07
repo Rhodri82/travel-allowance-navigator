@@ -1,3 +1,4 @@
+
 import { FormState, TravelType, SAPCode } from "../context/FormContext";
 import { differenceInDays, addDays, isBefore } from "date-fns";
 
@@ -132,49 +133,21 @@ export const calculateAccommodationRate = (
 ): number => {
   // Aboriginal Land has a fixed rate regardless of other factors
   if (travelType === "aboriginal_land") {
-    return 280.00; // Fixed rate for Aboriginal Land
+    return 268.34; // Fixed rate for Aboriginal Land - updated as per EA 2024
   }
   
-  // Base rates by travel type and accommodation type
+  // Base rates by accommodation type only per EA 2024
   let baseRate = 0;
   
   if (accommodationType === "ctm") {
     // Standard CTM rates
-    switch (travelType) {
-      case "short_stay":
-        baseRate = 148.70;
-        break;
-      case "long_stay":
-        baseRate = 268.34;
-        break;
-      case "reportable_lafha":
-        baseRate = 289.70;
-        break;
-    }
+    baseRate = 148.70;
   } else if (accommodationType === "private") {
     // Private accommodation (friends/family) rates
-    baseRate = 95.00;
+    baseRate = 268.34;
   } else if (accommodationType === "self_booked") {
     // Self-booked rates
-    if (isApproved) {
-      if (travelType === "short_stay") {
-        baseRate = 159.50;
-      } else {
-        baseRate = 285.00;
-      }
-    } else {
-      switch (travelType) {
-        case "short_stay":
-          baseRate = 148.70;
-          break;
-        case "long_stay":
-          baseRate = 268.34;
-          break;
-        case "reportable_lafha":
-          baseRate = 289.70;
-          break;
-      }
-    }
+    baseRate = 289.70;
   }
   
   // Apply uplifts (these are stackable)
@@ -208,16 +181,16 @@ export const calculateMealAllowance = (
   
   if (!eligibleForMeals) return 0;
   
-  // Base daily meal rate
-  const dailyMealRate = 75;
-  
-  // Calculate deductions for provided meals
+  // Updated EA 2024 meal rates
   const mealValueBreakdown = {
-    breakfast: 25,
-    lunch: 25,
-    dinner: 25
+    breakfast: 32.72,
+    lunch: 17.03,
+    dinner: 12.12
   };
   
+  const dailyMealRate = mealValueBreakdown.breakfast + mealValueBreakdown.lunch + mealValueBreakdown.dinner;
+  
+  // Calculate deductions for provided meals
   let deductions = 0;
   providedMeals.forEach(meal => {
     if (meal === "breakfast" && !breakfastEligible) return; // Skip if breakfast not eligible
@@ -259,7 +232,12 @@ export const determineSAPCodes = (formState: FormState): SAPCode[] => {
   
   // Aboriginal land codes take precedence
   if (formState.isAboriginalLand) {
-    codes.push("OR12", "OR13"); // Aboriginal Lands codes
+    codes.push("OR12"); // Aboriginal Lands base code
+    
+    if (formState.aboriginalLandBonus) {
+      codes.push("OR13"); // Aboriginal Lands bonus code
+    }
+    
     return codes;
   }
   
@@ -346,14 +324,14 @@ export const recalculateAllowances = (formState: FormState): FormState => {
     updatedState.accommodationNights = updatedState.consecutiveNights;
   }
   
-  // Calculate accommodation rate (with Aboriginal Land override)
+  // Calculate accommodation rate
   updatedState.accommodationRate = calculateAccommodationRate(
     updatedState.travelType,
     formState.isRemote,
     formState.isSubstandard,
     formState.isShortNotice,
     formState.accommodationType,
-    formState.accommodationApproved
+    true // Always assume approved as per EA 2024
   );
   
   // Check meals eligibility
@@ -379,9 +357,22 @@ export const recalculateAllowances = (formState: FormState): FormState => {
   
   // Calculate accommodation total
   let accommodationTotal = 0;
+  let aboriginalLandTotal = 0;
+  let aboriginalLandBonus = 0;
+  
   if (formState.isAboriginalLand) {
-    // Fixed rate for Aboriginal Land ($280 per day)
-    accommodationTotal = 280 * (updatedState.consecutiveNights + 1);
+    // Fixed EA 2024 Aboriginal Land rates
+    const baseRate = 268.34; // Per day base rate (OR12)
+    const bonusRate = 21.20; // Per day bonus rate (OR13)
+    const businessDays = updatedState.consecutiveNights + 1;
+    
+    // Calculate Aboriginal Land allowance
+    aboriginalLandTotal = baseRate * businessDays;
+    
+    // Calculate Aboriginal Land bonus if applicable
+    if (formState.aboriginalLandBonus) {
+      aboriginalLandBonus = bonusRate * businessDays;
+    }
   } else if (formState.accommodationRequired) {
     // Short notice is only applied for the first night
     if (formState.isShortNotice && formState.shortNoticeFirstNightOnly && updatedState.accommodationNights > 0) {
@@ -402,7 +393,7 @@ export const recalculateAllowances = (formState: FormState): FormState => {
     }
   }
   
-  // Calculate meals allowance
+  // Calculate meals allowance with EA 2024 rates
   const mealsAllowance = calculateMealAllowance(
     updatedState.eligibleForMeals,
     updatedState.consecutiveNights + 1, // Days = nights + 1
@@ -421,7 +412,7 @@ export const recalculateAllowances = (formState: FormState): FormState => {
   const sapCodes = determineSAPCodes(updatedState);
   
   // Calculate total allowance
-  const totalAllowance = accommodationTotal + mealsAllowance + vehicleTotal + upliftsTotal;
+  const totalAllowance = accommodationTotal + mealsAllowance + vehicleTotal + upliftsTotal + aboriginalLandTotal + aboriginalLandBonus;
   
   // Check if receipts are required
   updatedState.receiptRequired = isReceiptRequired(
@@ -440,6 +431,7 @@ export const recalculateAllowances = (formState: FormState): FormState => {
     meals: mealsAllowance,
     vehicle: vehicleTotal,
     uplifts: upliftsTotal,
+    aboriginalLandBonus: aboriginalLandBonus,
     total: totalAllowance
   };
   

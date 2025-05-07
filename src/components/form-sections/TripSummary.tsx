@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, Flag, X } from "lucide-react";
+import { CalendarIcon, Clock, Flag, X, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
@@ -92,6 +92,15 @@ const TripSummary = () => {
     dispatch({
       type: "UPDATE_FIELD",
       field: "isAboriginalLand",
+      value: checked,
+    });
+  };
+
+  // Handle aboriginal land bonus toggle
+  const handleAboriginalLandBonusChange = (checked: boolean) => {
+    dispatch({
+      type: "UPDATE_FIELD",
+      field: "aboriginalLandBonus",
       value: checked,
     });
   };
@@ -248,14 +257,39 @@ const TripSummary = () => {
                   Aboriginal Land
                   <Flag className="h-4 w-4 ml-2 text-amber-500" />
                 </Label>
-                {state.isAboriginalLand && (
-                  <p className="text-xs text-muted-foreground">
-                    This trip will be eligible for the fixed Aboriginal Land allowance of $280 per day.
-                  </p>
-                )}
               </div>
             </div>
           </div>
+
+          {state.isAboriginalLand && (
+            <div className="space-y-4 border border-amber-200 bg-amber-50 p-4 rounded-md">
+              <div className="flex gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-amber-800">
+                  This trip qualifies for the Aboriginal Land daily allowance.
+                </p>
+              </div>
+              
+              <div className="flex items-start space-x-2">
+                <Checkbox 
+                  id="aboriginal-land-bonus" 
+                  checked={state.aboriginalLandBonus || false}
+                  onCheckedChange={handleAboriginalLandBonusChange}
+                />
+                <div>
+                  <Label 
+                    htmlFor="aboriginal-land-bonus"
+                    className="text-amber-900"
+                  >
+                    Will you be working directly on Aboriginal Land during this trip?
+                  </Label>
+                  <p className="text-xs text-amber-700 mt-1">
+                    If yes, an additional daily bonus applies.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

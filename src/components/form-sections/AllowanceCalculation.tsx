@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useForm } from "@/context/FormContext";
 import {
@@ -56,7 +57,7 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
   };
 
   // Get badge variant based on travel type
-  const getTravelTypeBadge = (type: TravelType) => {
+  const getTravelTypeBadge = (type: TravelType): "default" | "secondary" | "destructive" | "outline" => {
     switch (type) {
       case "short_stay":
         return "default";
@@ -65,7 +66,7 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
       case "reportable_lafha":
         return "destructive";
       case "aboriginal_land":
-        return "warning";
+        return "outline";
       default:
         return "outline";
     }
@@ -81,8 +82,9 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
       case "OR24":
         return "Reportable LAFHA";
       case "OR12":
-      case "OR13":
         return "Aboriginal Lands Allowance";
+      case "OR13":
+        return "Aboriginal Lands Bonus";
       case "0R04":
         return "Vehicle Allowance";
       case "0A53":
@@ -100,7 +102,7 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
     <div className="space-y-6">
       <div className="space-y-2">
         <h2 className="text-xl font-semibold">
-          {preview ? "Travel Duration Classification" : "Allowance Calculation"}
+          {preview ? "Travel Duration Classification" : "Allowance Review"}
         </h2>
         <p className="text-gray-500">
           {preview 
@@ -168,8 +170,8 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
                   <div>
                     <p className="font-semibold text-amber-800">Aboriginal Land Allowance:</p>
                     <p className="text-amber-700">
-                      This trip is classified as Aboriginal Land travel, which provides a fixed $280 per day
-                      allowance regardless of other factors.
+                      This trip is classified as Aboriginal Land travel, with a base rate of $268.34 per day.
+                      {state.aboriginalLandBonus && " An additional bonus of $21.20 per day has been added."}
                     </p>
                   </div>
                 </div>
@@ -214,67 +216,89 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
         <>
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle>SAP Codes & Allowance Calculation</CardTitle>
+              <CardTitle>Allowance Calculation</CardTitle>
               <CardDescription>
-                The following SAP codes will be used for this trip
+                Summary of calculated allowances for this trip
               </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>SAP Code</TableHead>
+                    <TableHead>Category</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {state.calculatedAllowances.sapCodes.includes('OR12') && (
-                    <TableRow>
-                      <TableCell>
-                        <span className="font-mono">OR12/OR13</span>
-                      </TableCell>
-                      <TableCell>Aboriginal Lands Allowance</TableCell>
-                      <TableCell className="text-right">${state.calculatedAllowances.accommodation.toFixed(2)}</TableCell>
-                    </TableRow>
-                  )}
-                  
-                  {state.calculatedAllowances.accommodation > 0 && !state.calculatedAllowances.sapCodes.includes('OR12') && (
-                    <TableRow>
-                      <TableCell>
-                        <span className="font-mono">{state.calculatedAllowances.sapCodes[0]}</span>
-                      </TableCell>
-                      <TableCell>{formatSAPCodeName(state.calculatedAllowances.sapCodes[0])}</TableCell>
-                      <TableCell className="text-right">${state.calculatedAllowances.accommodation.toFixed(2)}</TableCell>
-                    </TableRow>
-                  )}
+                  {state.isAboriginalLand ? (
+                    <>
+                      <TableRow>
+                        <TableCell className="font-medium">Aboriginal Land Base</TableCell>
+                        <TableCell>
+                          $268.34 × {state.calculatedAllowances.totalDays} days
+                        </TableCell>
+                        <TableCell className="text-right">
+                          ${(268.34 * state.calculatedAllowances.totalDays).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                      
+                      {state.aboriginalLandBonus && (
+                        <TableRow>
+                          <TableCell className="font-medium">Aboriginal Land Bonus</TableCell>
+                          <TableCell>
+                            $21.20 × {state.calculatedAllowances.totalDays} days
+                          </TableCell>
+                          <TableCell className="text-right">
+                            ${state.calculatedAllowances.aboriginalLandBonus.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      {state.calculatedAllowances.accommodation > 0 && (
+                        <TableRow>
+                          <TableCell className="font-medium">Accommodation</TableCell>
+                          <TableCell>
+                            {state.accommodationType === "ctm" ? "CTM Booked" : 
+                             state.accommodationType === "private" ? "Private Accommodation" : 
+                             "Self-booked"}
+                          </TableCell>
+                          <TableCell className="text-right">${state.calculatedAllowances.accommodation.toFixed(2)}</TableCell>
+                        </TableRow>
+                      )}
 
-                  {state.calculatedAllowances.meals > 0 && (
-                    <TableRow>
-                      <TableCell>
-                        <span className="font-mono">0A53</span>
-                      </TableCell>
-                      <TableCell>Meals Allowance</TableCell>
-                      <TableCell className="text-right">${state.calculatedAllowances.meals.toFixed(2)}</TableCell>
-                    </TableRow>
+                      {state.calculatedAllowances.meals > 0 && (
+                        <TableRow>
+                          <TableCell className="font-medium">Meals</TableCell>
+                          <TableCell>
+                            Eligible meals for {state.calculatedAllowances.totalDays} days
+                          </TableCell>
+                          <TableCell className="text-right">${state.calculatedAllowances.meals.toFixed(2)}</TableCell>
+                        </TableRow>
+                      )}
+                    </>
                   )}
 
                   {state.privateVehicle.calculatedAllowance > 0 && (
                     <TableRow>
+                      <TableCell className="font-medium">Vehicle</TableCell>
                       <TableCell>
-                        <span className="font-mono">0R04</span>
+                        {state.privateVehicle.estimatedKm} km @ $0.96/km
                       </TableCell>
-                      <TableCell>Vehicle Allowance</TableCell>
                       <TableCell className="text-right">${state.privateVehicle.calculatedAllowance.toFixed(2)}</TableCell>
                     </TableRow>
                   )}
 
                   {state.calculatedAllowances.uplifts > 0 && (
                     <TableRow>
+                      <TableCell className="font-medium">Condition Uplifts</TableCell>
                       <TableCell>
-                        <span className="font-mono">UPLF</span>
+                        {state.isRemote && "Remote Location, "}
+                        {state.isSubstandard && "Substandard Accommodation, "}
+                        {state.isShortNotice && "Short Notice"}
                       </TableCell>
-                      <TableCell>Location/Condition Uplifts</TableCell>
                       <TableCell className="text-right">${state.calculatedAllowances.uplifts.toFixed(2)}</TableCell>
                     </TableRow>
                   )}
@@ -346,7 +370,7 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-base">FBT & Compliance</CardTitle>
+                  <CardTitle className="text-base">Special Conditions</CardTitle>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger>
@@ -354,9 +378,7 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
                       </TooltipTrigger>
                       <TooltipContent side="left">
                         <p className="w-[220px]">
-                          FBT (Fringe Benefits Tax) applies to LAFHA payments but
-                          not to Travel Allowance. Reportable LAFHA requires 
-                          additional payroll reporting.
+                          Special conditions may affect your allowance rates.
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -364,48 +386,7 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div>
-                  <span className="text-sm text-muted-foreground">FBT Applicable:</span>
-                  <div className="flex items-center">
-                    <p className="font-medium mr-2">
-                      {state.calculatedAllowances.fbtApplicable ? "Yes" : "No"}
-                    </p>
-                    <Badge variant={state.calculatedAllowances.fbtApplicable ? "outline" : "secondary"}>
-                      {state.calculatedAllowances.fbtApplicable ? "FBT Applies" : "No FBT"}
-                    </Badge>
-                  </div>
-                </div>
-
-                {state.accommodationType === "self_booked" && (
-                  <div className="flex p-3 rounded-md bg-amber-50 border border-amber-100 text-sm">
-                    <div className="mr-2 mt-0.5">
-                      <AlertCircle className="h-4 w-4 text-amber-500" />
-                    </div>
-                    <div className="text-amber-700">
-                      <p className="font-medium">Self-booked Accommodation</p>
-                      <p>
-                        Receipts are required for reimbursement.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {state.receiptRequired && (
-                  <div className="flex p-3 rounded-md bg-blue-50 border border-blue-100 text-sm">
-                    <div className="mr-2 mt-0.5">
-                      <Info className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div className="text-blue-700">
-                      <p className="font-medium">Receipts Required</p>
-                      <p>
-                        Your claim exceeds the standard threshold. 
-                        Please upload receipts in the Payment section.
-                      </p>
-                    </div>
-                  </div>
-                )}
-                
-                {state.isAboriginalLand && (
+                {state.isAboriginalLand ? (
                   <div className="flex p-3 rounded-md bg-amber-50 border border-amber-100 text-sm">
                     <div className="mr-2 mt-0.5">
                       <Flag className="h-4 w-4 text-amber-600" />
@@ -413,26 +394,56 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
                     <div className="text-amber-700">
                       <p className="font-medium">Aboriginal Land Allowance</p>
                       <p>
-                        Fixed rate of $280.00 per day applies.
-                        All meals and accommodation are included.
+                        Base rate of $268.34 per day applies.
+                        {state.aboriginalLandBonus && " Direct work on Aboriginal Land bonus of $21.20 per day also applies."}
                       </p>
                     </div>
                   </div>
+                ) : (
+                  <>
+                    <div>
+                      <span className="text-sm text-muted-foreground">FBT Applicable:</span>
+                      <div className="flex items-center">
+                        <p className="font-medium mr-2">
+                          {state.calculatedAllowances.fbtApplicable ? "Yes" : "No"}
+                        </p>
+                        <Badge variant={state.calculatedAllowances.fbtApplicable ? "outline" : "secondary"}>
+                          {state.calculatedAllowances.fbtApplicable ? "FBT Applies" : "No FBT"}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {state.accommodationType === "self_booked" && (
+                      <div className="flex p-3 rounded-md bg-amber-50 border border-amber-100 text-sm">
+                        <div className="mr-2 mt-0.5">
+                          <AlertCircle className="h-4 w-4 text-amber-500" />
+                        </div>
+                        <div className="text-amber-700">
+                          <p className="font-medium">Self-booked Accommodation</p>
+                          <p>
+                            Receipts must be uploaded after travel for reimbursement.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {state.isRemote || state.isSubstandard || state.isShortNotice ? (
+                      <div className="flex p-3 rounded-md bg-blue-50 border border-blue-100 text-sm">
+                        <div className="mr-2 mt-0.5">
+                          <Info className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div className="text-blue-700">
+                          <p className="font-medium">Special Conditions Applied</p>
+                          <ul className="list-disc ml-5 mt-1">
+                            {state.isRemote && <li>Remote Location (20% uplift)</li>}
+                            {state.isSubstandard && <li>Substandard Accommodation (15% uplift)</li>}
+                            {state.isShortNotice && <li>Short Notice Booking (10% uplift)</li>}
+                          </ul>
+                        </div>
+                      </div>
+                    ) : null}
+                  </>
                 )}
-                
-                {!state.isAboriginalLand && state.travelType !== "short_stay" && (
-                  <div>
-                    <span className="text-sm text-muted-foreground">Tax Implications:</span>
-                    <p className="font-medium">LAFHA has different tax treatment than Travel Allowance</p>
-                  </div>
-                )}
-                
-                <div>
-                  <span className="text-sm text-muted-foreground">Primary SAP Code:</span>
-                  <p className="font-mono font-medium">
-                    {state.isAboriginalLand ? 'OR12/OR13' : state.calculatedAllowances.sapCodes[0]}
-                  </p>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -443,9 +454,3 @@ const AllowanceCalculation: React.FC<AllowanceCalculationProps> = ({
 };
 
 export default AllowanceCalculation;
-
-console.log("Warning: AllowanceCalculation.tsx is marked as read-only, so we can't actually fix the Button variant issue. In a real project, you would need to change 'warning' to 'destructive' on line 131.");
-
-// NOTE: This is a special case because we can't modify AllowanceCalculation.tsx directly (it's marked as read-only).
-// We're adding a note here just to explain it, but since we can't actually make this change,
-// we'll inform the user after the lov-code block is closed.

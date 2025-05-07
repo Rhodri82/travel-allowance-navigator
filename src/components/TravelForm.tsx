@@ -94,11 +94,11 @@ const FormContent = () => {
       case 5:
         return <MealsSection />;
       case 6:
-        return <PaymentOptions />;
+        return <AllowanceCalculation />;
       case 7:
-        return <ApprovalSubmission />;
+        return <PaymentOptions />;
       case 8:
-        return <AllowanceCalculation />; // Moved to be accessible only from the final summary
+        return <ApprovalSubmission />;
       default:
         return <div>Invalid step</div>;
     }
@@ -125,7 +125,7 @@ const FormContent = () => {
             
             <FormNavigation 
               currentStep={state.currentStep} 
-              totalSteps={7}
+              totalSteps={8}
               onNext={handleNextStep}
               onPrev={handlePrevStep}
               onSubmit={handleSubmit}
