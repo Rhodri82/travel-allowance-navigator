@@ -1,4 +1,3 @@
-
 import { FormState, TravelType, SAPCode } from "../context/FormContext";
 import { differenceInDays, addDays, isBefore } from "date-fns";
 
@@ -350,10 +349,10 @@ export const recalculateAllowances = (formState: FormState): FormState => {
   // Calculate accommodation rate (with Aboriginal Land override)
   updatedState.accommodationRate = calculateAccommodationRate(
     updatedState.travelType,
-    formState.accommodationType,
     formState.isRemote,
     formState.isSubstandard,
     formState.isShortNotice,
+    formState.accommodationType,
     formState.accommodationApproved
   );
   
